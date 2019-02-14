@@ -1,0 +1,385 @@
+0001   0000             ; SYSINFO81 
+0002   0000             ; 	GPL
+0003   0000             ; 	Oliver Lange
+0004   0000             ; 	Version 1.0.1
+0005   0000             
+0006   0000             ; Compile with "tasm -80 -b sysinfo.asm sysinfo.p" 
+0007   0000             
+0008   0000             
+0009   0000             
+0010   0000             ; 2010/2011: Modifiziert für Spar-Interface mit TTLs - Siehe Forum
+0011   0000             ; 			 256 Bytes RAM an 3E00h nicht mehr nötig
+0012   0000             
+0013   0000             
+0014   0000             
+0015   0000             
+0016   0000              
+0017   0000             #define db .byte ;  cross-assembler definitions 
+0018   0000             #define dw .word 
+0019   0000             #define ds .block 
+0020   0000             #define org .org 
+0021   0000             #define end .end 
+0022   0000             
+0023   0000             
+0024   0000             
+0025   0000             #define COM_ADDR  0EFh
+0026   0000             #define COM_DAT   06Fh
+0027   0000             
+0028   0000             #define ADDR_LED  020h
+0029   0000             #define ADDR_SELA 030h
+0030   0000             #define ADDR_SELB 038h
+0031   0000             #define A_RHR 00h
+0032   0000             #define A_THR 00h
+0033   0000             #define A_IER 01h
+0034   0000             #define A_FCR 02h
+0035   0000             #define A_ISR 02h
+0036   0000             #define A_LCR 03h
+0037   0000             #define A_MCR 04h
+0038   0000             #define A_LSR 05h
+0039   0000             #define A_MSR 06h
+0040   0000             #define A_SCPAD 07h
+0041   0000             
+0042   0000             #define ADDR_DISABLE 0
+0043   0000             #define UPDATE	01FCh	; LOAD/SAVE adress update subroutine in ROM
+0044   0000             
+0045   0000             ;;#define VERBOSE 1
+0046   0000              
+0047   4009             org     $4009 ; BASIC PROGRAMM
+0048   4009             ;= System variables ============================================ 
+0049   4009              
+0050   4009 00             db 0     	;VERSN 
+0051   400A 00 00          dw 0     	;E_PPC 
+0052   400C 3F 41          dw dfile      ;D_FILE 
+0053   400E 40 41          dw dfile+1    ;DF_CC 
+0054   4010 58 41          dw var   	;VARS 
+0055   4012 00 00          dw 0     	;DEST 
+0056   4014 59 41          dw var+1      ;E_LINE 
+0057   4016 58 41          dw last-1     ;c_ADD 
+0058   4018 00 00          dw 0     	;X_PTR 
+0059   401A 59 41          dw last  	;STKBOT 
+0060   401C 59 41          dw last  	;STKEND 
+0061   401E 00             db 0     	;BERG 
+0062   401F 5D 40          dw membot     ;MEM 
+0063   4021 00             db 0     ;not used 
+0064   4022 02             db 2     ;DF_SZ 
+0065   4023 01 00          dw 1     ;S_TOP 
+0066   4025 FF FF FF       db $FF,$FF,$FF     ;LAST_K 
+0067   4028 37             db 55    ;MARGIN 
+0068   4029 30 41          dw line10     ;NXTLIN 
+0069   402B 00 00          dw 0     ;OLDPPC 
+0070   402D 00             db 0     ;FLAGX 
+0071   402E 00 00          dw 0     ;STRLEN 
+0072   4030 8D 0C          dw $0C8D      ;T_ADDR 
+0073   4032 00 00          dw 0     ;SEED 
+0074   4034 FF FF          dw $FFFF      ;FRAMES 
+0075   4036 00 00          db 0,0   ;COORDS 
+0076   4038 BC             db $BC   ;PR_CC 
+0077   4039 21 18          db 33,24      ;S_POSN 
+0078   403B 40             db 01000000B  ;CDFLAG 
+0079   403C             
+0080   403C             
+0081   403C                :ds 33    ;Print buffer --- now used for loader code, all loaded programs need to have the same !
+0082   403C             ; relocatible loader code
+0083   403C             PLOADER:
+0084   403C 2B          	DEC HL
+0085   403D             	; wait for byte
+0086   403D             PLDWLOOP:
+0087   403D 3E 3D       	LD A, ADDR_SELB+A_LSR
+0088   403F D3 EF           OUT (COM_ADDR),A
+0089   4041 DB 6F           IN A, (COM_DAT)
+0090   4043 E6 01       	AND 1			; bit 0 is RX data ready
+0091   4045 28 0A       	JR Z, PLDWT
+0092   4047             	; read a byte
+0093   4047 3E 38       	LD A, ADDR_SELB+A_RHR
+0094   4049 D3 EF           OUT (COM_ADDR),A
+0095   404B DB 6F           IN A, (COM_DAT)
+0096   404D                 ; standard load operation
+0097   404D 23          	INC HL			; had a DEC before, so inc heres
+0098   404E 77          	LD  (HL),A
+0099   404F 18 EC       	JR PLDWLOOP
+0100   4051             PLDWT: ; No byte available, time to check for end
+0101   4051             	; deselect UART here in case this is the last byte
+0102   4051 AF          	XOR A
+0103   4052 D3 EF           OUT (COM_ADDR),A
+0104   4054 CD FC 01    	CALL UPDATE
+0105   4057 18 E3       	JR PLOADER	; follow by dec
+0106   4059             PLOADEND:
+0107   4059                ds 4    ; Remaining space of 33 byte print buffer, after 29 byte loader
+0108   405D             
+0109   405D             membot: 
+0110   405D                ds 30    ;Calculator´s memory area 
+0111   407B                ds 2     ;not used 
+0112   407D              
+0113   407D             ;= First BASIC line, asm code ================================== 
+0114   407D              
+0115   407D             line0: 
+0116   407D 00 00          db 0,0   ;line number 
+0117   407F AF 00          dw line10-$-2 ;line length 
+0118   4081 EA             db $ea   ; REM 
+0119   4082             
+0120   4082             
+0121   4082             #define ELINE	4014h  ; Systemvariable, die das Ende des abzuspeichernen BASIC-Programs anzeigt
+0122   4082             #define ELINEHI	4015h  ; Systemvariable, die das Ende des abzuspeichernen BASIC-Programs anzeigt
+0123   4082             
+0124   4082             #define SHOW	0207h  ; ROM-Routinen
+0125   4082             #define FAST	02E7h
+0126   4082             #define RCLS	0A2Ah
+0127   4082             #define GETKEY	02BBh
+0128   4082             
+0129   4082             
+0130   4082             #DEFINE RST_PRTCHAR RST 10H
+0131   4082             #DEFINE c_SPACE 0
+0132   4082             #DEFINE c_NEWLINE 76H
+0133   4082             #DEFINE c_0 1CH
+0134   4082             
+0135   4082             #DEFINE c_A 38
+0136   4082             #DEFINE c_B (c_A+1)
+0137   4082             #DEFINE c_C (c_A+2)
+0138   4082             #DEFINE c_D (c_A+3)
+0139   4082             #DEFINE c_E (c_A+4)
+0140   4082             #DEFINE c_F (c_A+5)
+0141   4082             #DEFINE c_G (c_A+6)
+0142   4082             #DEFINE c_H (c_A+7)
+0143   4082             #DEFINE c_I (c_A+8)
+0144   4082             #DEFINE c_J (c_A+9)
+0145   4082             #DEFINE c_K (c_J+1)
+0146   4082             #DEFINE c_L (c_J+2)
+0147   4082             #DEFINE c_M (c_J+3)
+0148   4082             #DEFINE c_N (c_J+4)
+0149   4082             #DEFINE c_O (c_J+5)
+0150   4082             #DEFINE c_P (c_J+6)
+0151   4082             #DEFINE c_Q (c_J+7)
+0152   4082             #DEFINE c_R (c_J+8)
+0153   4082             #DEFINE c_S (c_J+9)
+0154   4082             #DEFINE c_T (c_S+1)
+0155   4082             #DEFINE c_U (c_S+2)
+0156   4082             #DEFINE c_V (c_S+3)
+0157   4082             #DEFINE c_W (c_S+4)
+0158   4082             #DEFINE c_X (c_S+5)
+0159   4082             #DEFINE c_Y (c_S+6)
+0160   4082             #DEFINE c_Z (c_S+7)
+0161   4082             
+0162   4082             
+0163   4082             
+0164   4082             ;
+0165   4082             ;   === Main entry point ====
+0166   4082             ;
+0167   4082             
+0168   4082             
+0169   4082             BASIC_START:
+0170   4082             	;CALL RCLS	; CLS
+0171   4082             	; get id code
+0172   4082 CD 23 41    	CALL PRINTMULTI
+0173   4085 38 2A 37 40     db c_S,c_E,c_R,64 ;
+0174   4089             
+0175   4089 CD 13 41    	CALL SETCOMREGS
+0176   408C             	;db ADDR_SELB+A_LCR,3	; write baud rate end, set wordlenght 8
+0177   408C 3C 00       	db ADDR_SELB+A_MCR,000H	; switch prescaler
+0178   408E 3B 83       	db ADDR_SELB+A_LCR,083H	;
+0179   4090 38 00       	db ADDR_SELB+0,	0		; LSB of divisor, 0 for ID read
+0180   4092 39 00       	db ADDR_SELB+1,	0		; MSB of divisor
+0181   4094 FF              db 0FFH	; end
+0182   4095             
+0183   4095 3E 39       	LD A, ADDR_SELB+1	; ID when divider=0
+0184   4097 CD 05 41    	CALL READCOMREG
+0185   409A 3E 38       	LD A, ADDR_SELB+0	; ID REV when divider=0
+0186   409C CD 05 41    	CALL READCOMREG
+0187   409F             
+0188   409F CD 13 41    	CALL SETCOMREGS
+0189   40A2 3B 83       	db ADDR_SELB+A_LCR,083H	; write baud rate
+0190   40A4 38 C0       	db ADDR_SELB+0,	192		; LSB of divisor, 192 for 4800 MCR Bit-7=0, or 48 for 1
+0191   40A6 39 00       	db ADDR_SELB+1,	0		; MSB of divisor
+0192   40A8 3B BF       	db ADDR_SELB+A_LCR,0BFH	; write Enhanced registers
+0193   40AA 39 40       	db ADDR_SELB+1,	40H		; FTCR - fifo count in scratchpad FCTR[6] = 1
+0194   40AC 3B 03       	db ADDR_SELB+A_LCR,3	; write baud rate end, set wordlenght 8
+0195   40AE 3F 00       	db ADDR_SELB+A_SCPAD,0	; EMSR (LCR[7] = 0, FCTR[6]=) RX Fifo = 0 or 2
+0196   40B0 3A 07       	db ADDR_SELB+A_FCR,7	; enable and reset fifos
+0197   40B2 FF              db 0FFH	; end
+0198   40B3             
+0199   40B3             	;LD A,c_NEWLINE
+0200   40B3             	;RST_PRTCHAR
+0201   40B3             
+0202   40B3             	; send byte
+0203   40B3 3E 38       	LD A, ADDR_SELB+A_THR
+0204   40B5 D3 EF           OUT (COM_ADDR),A
+0205   40B7             
+0206   40B7             	; dummy read
+0207   40B7                 ;IN A, (COM_DAT)
+0208   40B7 DB 6F           IN A, (COM_DAT)
+0209   40B9 DB 6F           IN A, (COM_DAT)
+0210   40BB             
+0211   40BB 3E 4F       	LD A, 'O'
+0212   40BD D3 6F           OUT (COM_DAT),A
+0213   40BF 3E 4B       	LD A, 'K'
+0214   40C1 D3 6F           OUT (COM_DAT),A
+0215   40C3             
+0216   40C3             	; wait for input
+0217   40C3             WTINPLOOP1:
+0218   40C3 3E 3D       	LD A, ADDR_SELB+A_LSR
+0219   40C5 D3 EF           OUT (COM_ADDR),A
+0220   40C7             WTINPLOOP2:
+0221   40C7 DB 6F           IN A, (COM_DAT)
+0222   40C9 E6 01       	AND 1			; bit 0 is RX data ready
+0223   40CB 28 FA       	JR Z, WTINPLOOP2
+0224   40CD             	; have data
+0225   40CD             
+0226   40CD 3E 38       	LD A, ADDR_SELB+A_RHR
+0227   40CF D3 EF           OUT (COM_ADDR),A
+0228   40D1 DB 6F           IN A, (COM_DAT)
+0229   40D3             	;CALL READCOMREG
+0230   40D3             
+0231   40D3 FE 48       	CP 'H'
+0232   40D5 20 0E       	JR NZ, NOSWSP
+0233   40D7             	; Switch speed upon H
+0234   40D7 CD 13 41    	CALL SETCOMREGS
+0235   40DA 3B 83       	db ADDR_SELB+A_LCR,083H	; write baud rate
+0236   40DC 38 02       	db ADDR_SELB+0,	2		; LSB of divisor, 4 for 230.4 - 2 for 460.8k   -   MCR Bit-7=0
+0237   40DE 39 00       	db ADDR_SELB+1,	0		; MSB of divisor
+0238   40E0 3B 03       	db ADDR_SELB+A_LCR,3	; write baud rate end, set wordlenght 8
+0239   40E2             	;db ADDR_SELB+A_FCR,7	; enable and reset fifos
+0240   40E2 FF              db 0FFH	; end
+0241   40E3 18 DE       	JR WTINPLOOP1
+0242   40E5             
+0243   40E5             NOSWSP:
+0244   40E5 FE 4C       	CP 'L'
+0245   40E7 20 18       	JR NZ, NOLOAD
+0246   40E9             	; LOAD a P file
+0247   40E9             LOADP:
+0248   40E9 CD E7 02    	CALL FAST	; here we go
+0249   40EC             ;	POP HL		; clean up leftover
+0250   40EC             ;	LD HL, 0676H	; return address in NEXT-LINE like when LOADING
+0251   40EC             ;	EX (SP),HL ; PUSH HL
+0252   40EC             	; copy loader code to some safe location
+0253   40EC 21 3C 40    	LD HL, PLOADER
+0254   40EF             	;32719 is the highest possible for 29byte loader, allows 966 byte progs for 1k
+0255   40EF 11 CF 7F    	LD DE, 32719  ; move to area that possibly holds RAM, TODO find even better spot
+0256   40F2 01 1D 00    	LD BC, PLOADEND-PLOADER
+0257   40F5 ED B0       	LDIR
+0258   40F7             	; ok, go
+0259   40F7 21 15 40    	LD HL,ELINEHI
+0260   40FA 34          	INC (HL) ; make sure no match during load
+0261   40FB 21 09 40    	LD HL,4009h	; start of BASIC area to load
+0262   40FE C3 CF 7F    	JP 32719  ; +4000H?
+0263   4101             
+0264   4101             NOLOAD:
+0265   4101             	; send back what was received
+0266   4101             	; we have jst read the data, so shold hav correct address
+0267   4101 D3 6F           OUT (COM_DAT),A
+0268   4103             	;CALL PRINTHEX
+0269   4103 18 BE       	JR WTINPLOOP1
+0270   4105             
+0271   4105             
+0272   4105             	
+0273   4105             READCOMREG:
+0274   4105 D3 EF           OUT (COM_ADDR),A
+0275   4107                 ; read scratch pad
+0276   4107 DB 6F           IN A, (COM_DAT)
+0277   4109 F5              PUSH AF
+0278   410A CD 2E 41    	CALL PRINTHEX
+0279   410D AF          	XOR A
+0280   410E D7          	RST_PRTCHAR
+0281   410F AF          	XOR A
+0282   4110 D7          	RST_PRTCHAR
+0283   4111 F1          	POP AF
+0284   4112 C9          	RET
+0285   4113             
+0286   4113             	
+0287   4113             
+0288   4113             SETCOMREGS:
+0289   4113 E1          	POP HL	; Ret-Adress
+0290   4114             SETCOM2:
+0291   4114 7E          	LD A,(HL)
+0292   4115 23          	INC HL
+0293   4116 FE FF       	CP  0FFh ; address FF to end
+0294   4118 28 08       	JR Z,SETCOMEXIT
+0295   411A D3 EF           OUT (COM_ADDR),A
+0296   411C 7E          	LD A,(HL)
+0297   411D 23          	INC HL
+0298   411E D3 6F           OUT (COM_DAT),A
+0299   4120 18 F2       	JR SETCOM2
+0300   4122             SETCOMEXIT:
+0301   4122 E9          	JP (HL)
+0302   4123             
+0303   4123             
+0304   4123             
+0305   4123             ; Print characters after call until bit 6 set, 
+0306   4123             ;  USES HL
+0307   4123             PRINTMULTI:
+0308   4123 E1          	POP HL	; Ret-Adress
+0309   4124             PRINTMULT2:
+0310   4124 7E          	LD A,(HL)
+0311   4125 E6 BF       	AND 0BFh
+0312   4127 D7          	RST_PRTCHAR
+0313   4128 CB 76       	BIT 6,(HL)
+0314   412A 23          	INC HL
+0315   412B 28 F7       	JR Z,PRINTMULT2
+0316   412D E9          	JP (HL)
+0317   412E             
+0318   412E             
+0319   412E             
+0320   412E             ; *
+0321   412E             ; * AUSGABE A IN HEX
+0322   412E             ; *
+0323   412E             PRINTHEX:
+0324   412E             	;PUSH HL
+0325   412E~            #ifdef DIAG
+0326   412E~            	PUSH BC
+0327   412E~            	LD C,A		; SAVE
+0328   412E~            	SRL A
+0329   412E~            	SRL A
+0330   412E~            	SRL A
+0331   412E~            	SRL A
+0332   412E~            	ADD A,1CH	; Offset to '0'
+0333   412E~            	RST 10H
+0334   412E~            	LD A,C
+0335   412E~            	AND	0FH		; MASK
+0336   412E~            	ADD A,1CH	; Offset to '0'
+0337   412E~            	RST 10H
+0338   412E~            	LD A,C
+0339   412E~            	POP BC
+0340   412E             #endif
+0341   412E             	;POP HL
+0342   412E C9          	RET
+0343   412F             
+0344   412F              
+0345   412F 76             db $76   ;N/L 
+0346   4130              
+0347   4130             line10:
+0348   4130 00 0A          db 0,10  ;line number 
+0349   4132 0B 00          dw dfile-$-2  ;line length 
+0350   4134 F5             db $f5   ;PRINT 
+0351   4135 D4             db $d4   ;USR 
+0352   4136 C5             db $c5   ;VAL
+0353   4137 0B             db $0b   ;"
+0354   4138 1D             db $1d   ;1 
+0355   4139 22             db $22   ;6 
+0356   413A 21             db $21   ;5 
+0357   413B 1D             db $1d   ;1 
+0358   413C 20             db $20   ;4 
+0359   413D 0B             db $0b   ;"
+0360   413E 76             db $76   ;N/L 
+0361   413F             
+0362   413F             
+0363   413F                
+0364   413F             ;- Display file -------------------------------------------- 
+0365   413F              
+0366   413F             dfile: 
+0367   413F 76             db $76 
+0368   4140 76 76 76 76    db $76,$76,$76,$76,$76,$76,$76,$76 
+0368   4144 76 76 76 76 
+0369   4148 76 76 76 76    db $76,$76,$76,$76,$76,$76,$76,$76 
+0369   414C 76 76 76 76 
+0370   4150 76 76 76 76    db $76,$76,$76,$76,$76,$76,$76,$76 
+0370   4154 76 76 76 76 
+0371   4158              
+0372   4158             ;- BASIC-Variables ---------------------------------------- 
+0373   4158              
+0374   4158             var: 
+0375   4158 80             db $80 
+0376   4159              
+0377   4159             ;- End of program area ---------------------------- 
+0378   4159             
+0379   4159             last: 
+0380   4159              
+0381   4159                end 
+tasm: Number of errors = 0

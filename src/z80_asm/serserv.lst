@@ -1,0 +1,377 @@
+0001   0000             ; Server program for 16C2850 UART
+0002   0000             ; assumes that the UART is already initialized by the loader program
+0003   0000             ; 	GPL
+0004   0000             ; 	Oliver Lange
+0005   0000             ; 	Version 1.0.1
+0006   0000             
+0007   0000             ; Compile with "tasm -80 -b foo.asm foo.p"
+0008   0000             
+0009   0000             
+0010   0000             
+0011   0000             
+0012   0000             
+0013   0000              
+0014   0000             #define db .byte ;  cross-assembler definitions 
+0015   0000             #define dw .word 
+0016   0000             #define ds .block 
+0017   0000             #define org .org 
+0018   0000             #define end .end 
+0019   0000             
+0020   0000             ;;#define VERBOSE 1
+0021   0000             
+0022   0000             #define ELINE	4014h  ;
+0023   0000             #define ELINEHI	4015h  ;
+0024   0000             
+0025   0000             #define SHOW	0207h  ; ROM-Routinen
+0026   0000             #define FAST	02E7h
+0027   0000             #define RCLS	0A2Ah
+0028   0000             #define GETKEY	02BBh
+0029   0000             #define UPDATE	01FCh	; LOAD/SAVE adress update subroutine in ROM
+0030   0000             
+0031   0000             
+0032   0000             #DEFINE RST_PRTCHAR RST 10H
+0033   0000             #DEFINE c_SPACE 0
+0034   0000             #DEFINE c_NEWLINE 76H
+0035   0000             #DEFINE c_0 1CH
+0036   0000             
+0037   0000             #DEFINE c_A 38
+0038   0000             #DEFINE c_B (c_A+1)
+0039   0000             #DEFINE c_C (c_A+2)
+0040   0000             #DEFINE c_D (c_A+3)
+0041   0000             #DEFINE c_E (c_A+4)
+0042   0000             #DEFINE c_F (c_A+5)
+0043   0000             #DEFINE c_G (c_A+6)
+0044   0000             #DEFINE c_H (c_A+7)
+0045   0000             #DEFINE c_I (c_A+8)
+0046   0000             #DEFINE c_J (c_A+9)
+0047   0000             #DEFINE c_K (c_J+1)
+0048   0000             #DEFINE c_L (c_J+2)
+0049   0000             #DEFINE c_M (c_J+3)
+0050   0000             #DEFINE c_N (c_J+4)
+0051   0000             #DEFINE c_O (c_J+5)
+0052   0000             #DEFINE c_P (c_J+6)
+0053   0000             #DEFINE c_Q (c_J+7)
+0054   0000             #DEFINE c_R (c_J+8)
+0055   0000             #DEFINE c_S (c_J+9)
+0056   0000             #DEFINE c_T (c_S+1)
+0057   0000             #DEFINE c_U (c_S+2)
+0058   0000             #DEFINE c_V (c_S+3)
+0059   0000             #DEFINE c_W (c_S+4)
+0060   0000             #DEFINE c_X (c_S+5)
+0061   0000             #DEFINE c_Y (c_S+6)
+0062   0000             #DEFINE c_Z (c_S+7)
+0063   0000             
+0064   0000             #DEFINE COM_ADDR  0EFh
+0065   0000             #DEFINE COM_DAT   06Fh
+0066   0000             
+0067   0000             #DEFINE ADDR_LED  020h
+0068   0000             #DEFINE ADDR_SELA 030h
+0069   0000             #DEFINE ADDR_SELB 038h
+0070   0000             
+0071   0000             #DEFINE A_RHR 00h
+0072   0000             #DEFINE A_THR 00h
+0073   0000             #DEFINE A_IER 01h
+0074   0000             #DEFINE A_FCR 02h
+0075   0000             #DEFINE A_ISR 02h
+0076   0000             #DEFINE A_LCR 03h
+0077   0000             #DEFINE A_MCR 04h
+0078   0000             #DEFINE A_LSR 05h
+0079   0000             #DEFINE A_MSR 06h
+0080   0000             #DEFINE A_SCPAD 07h
+0081   0000             
+0082   0000             #DEFINE ADDR_DISABLE 0
+0083   0000             
+0084   0000              
+0085   4009             org     $4009 ; BASIC PROGRAMM
+0086   4009             ;= System variables ============================================ 
+0087   4009              
+0088   4009 00             db 0     	;VERSN 
+0089   400A 00 00          dw 0     	;E_PPC 
+0090   400C B4 40          dw dfile      ;D_FILE 
+0091   400E B5 40          dw dfile+1    ;DF_CC 
+0092   4010 AD 43          dw var   	;VARS 
+0093   4012 00 00          dw 0     	;DEST 
+0094   4014 AE 43          dw var+1      ;E_LINE 
+0095   4016 AD 43          dw last-1     ;c_ADD 
+0096   4018 00 00          dw 0     	;X_PTR 
+0097   401A AE 43          dw last  	;STKBOT 
+0098   401C AE 43          dw last  	;STKEND 
+0099   401E 00             db 0     	;BERG 
+0100   401F 5D 40          dw membot     ;MEM 
+0101   4021 00             db 0     ;not used 
+0102   4022 02             db 2     ;DF_SZ 
+0103   4023 01 00          dw 1     ;S_TOP 
+0104   4025 FF FF FF       db $FF,$FF,$FF     ;LAST_K 
+0105   4028 37             db 55    ;MARGIN 
+0106   4029 A2 40          dw line10     ;NXTLIN 
+0107   402B 00 00          dw 0     ;OLDPPC 
+0108   402D 00             db 0     ;FLAGX 
+0109   402E 00 00          dw 0     ;STRLEN 
+0110   4030 8D 0C          dw $0C8D      ;T_ADDR 
+0111   4032 00 00          dw 0     ;SEED 
+0112   4034 FF FF          dw $FFFF      ;FRAMES 
+0113   4036 00 00          db 0,0   ;COORDS 
+0114   4038 BC             db $BC   ;PR_CC 
+0115   4039 21 18          db 33,24      ;S_POSN 
+0116   403B 40             db 01000000B  ;CDFLAG 
+0117   403C             
+0118   403C             prbuf:
+0119   403C             ; ===== JUMP TABLE =====
+0120   403C             
+0121   403C             	; CMD MULTIPOKE
+0122   403C DB 6F           IN A, (COM_DAT) ; number of bytes
+0123   403E 47              LD B, A
+0124   403F DB 6F           IN A, (COM_DAT) ; address low
+0125   4041 6F              LD L, A
+0126   4042 DB 6F           IN A, (COM_DAT) ; address high
+0127   4044 67              LD H, A
+0128   4045 0E 6F           LD C, COM_DAT   ; prepares
+0129   4047 ED B2           INIR
+0130   4049 18 51       	JR ENTRYFAST
+0131   404B             
+0132   404B             	; CMD PEEK
+0133   404B DB 6F           IN A, (COM_DAT)
+0134   404D 6F              LD L, A   ; address low
+0135   404E DB 6F           IN A, (COM_DAT)
+0136   4050 67              LD H, A	  ; address high
+0137   4051 7E              LD A, (HL)
+0138   4052 D3 6F           OUT (COM_DAT),A
+0139   4054 18 46       	JR ENTRYFAST
+0140   4056             
+0141   4056             	; CMD FAST
+0142   4056 CD E7 02    	CALL FAST
+0143   4059 18 41       	JR ENTRYFAST
+0144   405B             
+0145   405B                 ds 33-26-5  ;Print buffer
+0146   405D             membot:
+0147   405D             ; relocatible loader code
+0148   405D                ds 30    ;Calculator´s memory area, used partially by com-init subprocedure
+0149   407B                ds 2     ;not used 
+0150   407D              
+0151   407D             ;= First BASIC line, asm code ================================== 
+0152   407D              
+0153   407D             line0: 
+0154   407D 00 00          db 0,0   ;line number 
+0155   407F 21 00          dw line10-$-2 ;line length 
+0156   4081 EA             db $ea   ; REM 
+0157   4082             
+0158   4082             
+0159   4082             ;
+0160   4082             ;   === Main entry point ====
+0161   4082             ;
+0162   4082             
+0163   4082             
+0164   4082             BASIC_START:
+0165   4082 3E 38       	LD A, ADDR_SELB+A_THR
+0166   4084 D3 EF           OUT (COM_ADDR),A
+0167   4086 11 A0 40    	LD DE, JTBLFAST+1
+0168   4089             
+0169   4089             	; CMD SYNC
+0170   4089             CMD_SYNC:
+0171   4089 3E 2A       	LD A,42
+0172   408B D3 6F           OUT (COM_DAT),A
+0173   408D             
+0174   408D             WAITFORCHUNK:
+0175   408D 06 2A       	LD B,42
+0176   408F 3E 3F       	LD A, ADDR_SELB+A_SCPAD ; scratchpad has fifo level if configured
+0177   4091                 ; read number of bytes in receiver
+0178   4091 D3 EF           OUT (COM_ADDR),A
+0179   4093             WAITNLP:
+0180   4093 DB 6F           IN A, (COM_DAT)
+0181   4095 90          	SUB B
+0182   4096 38 FB       	JR C, WAITNLP
+0183   4098                 ; back to  data read/write
+0184   4098 3E 38       	LD A, ADDR_SELB+A_THR
+0185   409A D3 EF           OUT (COM_ADDR),A
+0186   409C             
+0187   409C             ENTRYFAST: ; MAINLOOP, also CMD NOP
+0188   409C             
+0189   409C DB 6F           IN A, (COM_DAT)
+0190   409E 12          	LD (DE),A  ; self modifying code
+0191   409F             JTBLFAST:
+0192   409F 18 FB       	JR ENTRYFAST
+0193   40A1             
+0194   40A1             ; ===== JUMP TABLE =====
+0195   40A1~            #ifdef DIAG
+0196   40A1~            
+0197   40A1~            	; CMD MULTIPOKE
+0198   40A1~                IN A, (COM_DAT) ; number of bytes
+0199   40A1~                LD B, A
+0200   40A1~                IN A, (COM_DAT) ; address low
+0201   40A1~                LD L, A
+0202   40A1~                IN A, (COM_DAT) ; address high
+0203   40A1~                LD H, A
+0204   40A1~                LD C, COM_DAT   ; prepares
+0205   40A1~                INIR
+0206   40A1~            	JR ENTRYFAST
+0207   40A1~            
+0208   40A1~            	; CMD PEEK
+0209   40A1~                IN A, (COM_DAT)
+0210   40A1~                LD L, A   ; address low
+0211   40A1~                IN A, (COM_DAT)
+0212   40A1~                LD H, A	  ; address high
+0213   40A1~                LD A, (HL)
+0214   40A1~                OUT (COM_DAT),A
+0215   40A1~            	JR ENTRYFAST
+0216   40A1~            
+0217   40A1~            
+0218   40A1~            	; CMD OUT
+0219   40A1~                IN A, (COM_DAT)
+0220   40A1~                LD C, A   ; port address high
+0221   40A1~                IN A, (COM_DAT)
+0222   40A1~                LD B, A	   ; port address high
+0223   40A1~                IN A, (COM_DAT)
+0224   40A1~                OUT (C),A
+0225   40A1~            	JR ENTRYFAST
+0226   40A1~            
+0227   40A1~            	; CMD IN
+0228   40A1~                IN A, (COM_DAT)
+0229   40A1~                LD C, A   ; port
+0230   40A1~                IN A, (COM_DAT)
+0231   40A1~                LD B, A	   ; port address high
+0232   40A1~                IN A,(C)
+0233   40A1~                OUT (COM_DAT),A
+0234   40A1~            	JR ENTRYFAST
+0235   40A1~            
+0236   40A1~            
+0237   40A1~            ; ===== END OF JUMP TABLE =====
+0238   40A1~            
+0239   40A1~            
+0240   40A1~            
+0241   40A1~            
+0242   40A1~            
+0243   40A1~            ;  #ifdef DIAG
+0244   40A1~            
+0245   40A1~            ; Print characters after call until bit 6 set, 
+0246   40A1~            ;  USES HL
+0247   40A1~            PRINTMULTI:
+0248   40A1~            	POP HL	; Ret-Adress
+0249   40A1~            PRINTMULT2:
+0250   40A1~            	LD A,(HL)
+0251   40A1~            	AND 0BFh
+0252   40A1~            	RST_PRTCHAR
+0253   40A1~            	BIT 6,(HL)
+0254   40A1~            	INC HL
+0255   40A1~            	JR Z,PRINTMULT2
+0256   40A1~            	JP (HL)
+0257   40A1~            
+0258   40A1~            
+0259   40A1~            
+0260   40A1~            ; *
+0261   40A1~            ; * AUSGABE A IN HEX
+0262   40A1~            ; *
+0263   40A1~            PRINTHEX:
+0264   40A1~            	;PUSH HL
+0265   40A1~            	PUSH BC
+0266   40A1~            	LD C,A		; SAVE
+0267   40A1~            	SRL A
+0268   40A1~            	SRL A
+0269   40A1~            	SRL A
+0270   40A1~            	SRL A
+0271   40A1~            	ADD A,1CH	; Offset to '0'
+0272   40A1~            	RST 10H
+0273   40A1~            	LD A,C
+0274   40A1~            	AND	0FH		; MASK
+0275   40A1~            	ADD A,1CH	; Offset to '0'
+0276   40A1~            	RST 10H
+0277   40A1~            	LD A,C
+0278   40A1~            	POP BC
+0279   40A1~            	;POP HL
+0280   40A1~            	RET
+0281   40A1             #endif
+0282   40A1              
+0283   40A1 76             db $76   ;N/L 
+0284   40A2              
+0285   40A2             line10:
+0286   40A2 00 0A          db 0,10  ;line number 
+0287   40A4 0E 00          dw dfile-$-2  ;line length 
+0288   40A6 F9             db $f9   ;RAND
+0289   40A7 D4             db $d4   ;USR 
+0290   40A8 1D             db $1d   ;1 
+0291   40A9 22             db $22   ;6 
+0292   40AA 21             db $21   ;5
+0293   40AB 1D             db $1d   ;1
+0294   40AC 20             db $20   ;4
+0295   40AD 7E             db $7e   ;FP mark
+0296   40AE 8F             db $8f   ;5 bytes FP number
+0297   40AF 01             db $01   ;
+0298   40B0 04             db $04   ;
+0299   40B1 00             db $00   ;
+0300   40B2 00             db $00   ;
+0301   40B3 76             db $76   ;N/L 
+0302   40B4             
+0303   40B4                
+0304   40B4             ;- Display file -------------------------------------------- 
+0305   40B4             
+0306   40B4             dfile: 
+0307   40B4 76             db $76
+0308   40B5             
+0309   40B5 20          	db $20 ; Char in first pos
+0310   40B6             	ds 31
+0311   40D5 76          	db $76
+0312   40D6             	ds 32
+0313   40F6 76          	db $76
+0314   40F7             	ds 32
+0315   4117 76          	db $76
+0316   4118             	ds 32
+0317   4138 76          	db $76
+0318   4139             
+0319   4139             	ds 32	;4
+0320   4159 76          	db $76
+0321   415A             	ds 32
+0322   417A 76          	db $76
+0323   417B             	ds 32
+0324   419B 76          	db $76
+0325   419C             	ds 32
+0326   41BC 76          	db $76
+0327   41BD             
+0328   41BD             
+0329   41BD             	ds 32	;8
+0330   41DD 76          	db $76
+0331   41DE             	ds 32
+0332   41FE 76          	db $76
+0333   41FF             	ds 32
+0334   421F 76          	db $76
+0335   4220             	ds 32
+0336   4240 76          	db $76
+0337   4241             
+0338   4241             	ds 32	;12
+0339   4261 76          	db $76
+0340   4262             	ds 32
+0341   4282 76          	db $76
+0342   4283             	ds 32
+0343   42A3 76          	db $76
+0344   42A4             	ds 32
+0345   42C4 76          	db $76
+0346   42C5             
+0347   42C5             
+0348   42C5             	ds 32	;16
+0349   42E5 76          	db $76
+0350   42E6             	ds 32
+0351   4306 76          	db $76
+0352   4307             	ds 32
+0353   4327 76          	db $76
+0354   4328             	ds 32
+0355   4348 76          	db $76
+0356   4349             
+0357   4349             	ds 32	;20
+0358   4369 76          	db $76
+0359   436A             	ds 32
+0360   438A 76          	db $76
+0361   438B             	ds 32
+0362   43AB 76          	db $76
+0363   43AC             ;	ds 1 ; 6 okay, 8 not
+0364   43AC 76          	db $76
+0365   43AD             
+0366   43AD              
+0367   43AD             ;- BASIC-Variables ---------------------------------------- 
+0368   43AD              
+0369   43AD             var: 
+0370   43AD 80             db $80 
+0371   43AE             
+0372   43AE             ;- End of program area ---------------------------- 
+0373   43AE             
+0374   43AE             last: 
+0375   43AE              
+0376   43AE                end 
+tasm: Number of errors = 0

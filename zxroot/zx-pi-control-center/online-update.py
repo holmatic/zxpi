@@ -30,11 +30,13 @@ class Updater:
         self.errThread = None
 
     def print_help(self):
-        self.mainwin.prttxt(str2zx('\n\n <<< ONLINE UPDATER >>> \n\n',upper_inv=False ))
-        self.mainwin.prttxt(str2zx('\n\n U to start update \n\n X exit\n\n',upper_inv=True ))
+        self.mainwin.prttxt(str2zx('\n\n',upper_inv=True ))
+        self.mainwin.prttxt(str2zx('      ZXPI ONLINE UPDATER     ',inverse=True ))
+        self.mainwin.prttxt(str2zx('\n\n U start update \n\n X exit\n\n',upper_inv=True ))
         
     # todo exit
     def start(self):
+        self.mainwin.cls()
         self.mainwin.prttxt(str2zx('\nstart update attempt...\n',upper_inv=True ))
         self.proc = Popen( ['git','pull','origin','master']  ,shell=False,stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
         self.outThread = Thread(target=self.out_handler_thread, args=(self.proc.stdout,))

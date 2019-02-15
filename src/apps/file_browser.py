@@ -14,7 +14,7 @@ class AppFileBrowser:
     def __init__(self,mgr):
         self.mgr=mgr
         self.mainwin=TextWindow(mgr,30,22,1,1,border=WindowBorderFrame(),kb_event=self.kb_event, cursor_off=True)
-        self.cwd=Path.cwd()/'..'/'zxroot' #Path.home()
+        self.cwd=Path.cwd().parent/'zxroot' 
         self.cwdfiles=[]
         self.show_offset=0
         self.max_lines=16

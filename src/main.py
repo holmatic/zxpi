@@ -21,15 +21,12 @@ if __name__ == '__main__':
     os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\loader.asm z80_asm\loader.p''')
     os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\serserv.asm z80_asm\serserv.p''')
     
+    time.sleep(1) # as the script might run as an automated startup, wait a bit till cpu gets less busy
+    
     con=zx_ser_srv.ZXLoadConnectHandler(zx_ser_srv.get_serial_port( ['COM4','COM3','/dev/ttyAMA0'] ))
     
     #with zx_ser_srv.get_serial_server_connection( ['COM4',] ) as sersrv:
     with zx_ser_srv.ZXSerServ(con) as sersrv:
-        #sersrv.run_test(0.5)
-       # while con.state!=zx_ser_srv.ConnectState.SER_COM:
-       #     con.state_handler()
-       #     time.sleep(0.05)
-        
         
         m=zx_app_host.ZxAppHost(sersrv)
         print(111)

@@ -75,9 +75,14 @@ class AppWebZxForumDe:
         self.mgr.update(wait_till_sync_done=True)
         
         while True:
-            r=requests.get(self.url, timeout=6.0)
-            if r.status_code==requests.codes.ok: break
-            self.mainwin.prttxt(str2zx("retrieved %d, try again..\n"%(r.status_code),upper_inv=False ))
+            try:
+                r=requests.get(self.url, timeout=7.0)
+                if r.status_code==requests.codes.ok: break
+                self.mainwin.prttxt(str2zx("retrieved %d, try again..\n"%(r.status_code),upper_inv=False ))
+            except ConnectionError as e:
+                self.mainwin.prttxt(str2zx("error %s, try again..\n"%(str(e)),upper_inv=False ))
+            except requests.RequestException as e:
+                self.mainwin.prttxt(str2zx("retrieved %s, try again..\n"%(str(e)),upper_inv=False ))
             self.mgr.update(0.5)
             if self.do_exit: return
         

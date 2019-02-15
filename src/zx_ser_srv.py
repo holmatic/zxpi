@@ -93,7 +93,7 @@ class ZXLoadConnectHandler:
             t=time.time()
             if self.tape_out_progress is None:
                 # within pause
-                if t>=self.last_time_stamp+2.0:
+                if t>=self.last_time_stamp+2.5:
                     # pause end, start
                     self.tape_out_progress=0
                     self.last_time_stamp=t
@@ -102,7 +102,7 @@ class ZXLoadConnectHandler:
                 # transmit loader in background
                 ttime_sec=t-self.last_time_stamp
                 #print("ttime_sec",ttime_sec)
-                while self.tape_out_progress * 10 / 4800  < ttime_sec+0.67: # send some hundred millisec ahead to have tx buffer always full
+                while self.tape_out_progress * 10 / 4800  < ttime_sec+0.8: # send some hundred millisec ahead to have tx buffer always full
                     self.ser.write( [self.loader[self.tape_out_progress]] )
                     self.tape_out_progress+=1
                     if self.tape_out_progress>=len(self.loader):

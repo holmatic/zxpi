@@ -27,6 +27,7 @@ class AppFileBrowser:
     def get_dir(self):
         try:
             self.cwdfiles=[e for e in self.cwd.iterdir()]
+            self.cwdfiles.sort()
         except PermissionError:
             print("PermissionError")
         self.show_offset=0

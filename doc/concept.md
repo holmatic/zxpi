@@ -5,8 +5,8 @@
 
 ### Next steps and to-do's:
 
-* Transpose Cam
-* Eliminate .. in path
+* ! Transpose Cam
+* ! Eliminate .. in path
 * ! Make full 32x24 screen available by overlaying code
 * Apps
     * Console
@@ -19,6 +19,7 @@
 * p Loader as file, loader with break
 * ! Loop in server 4800 baud mode to wait for 'OK' from sersrv, or 'SV' from pre-placed `USR` save routine 
 * PiCam save pic etc
+* Link to DRIVE
 * More generic Overlay for OUT, sound, etc
 * Graph mode typing, graphics
 
@@ -31,7 +32,7 @@ zxroot
 	ZX81-1K
 	ZX81-DEMOS+GAMES
 	ZX81-TOOLS
-
+	DRIVES
 
 ### Pi Config
 

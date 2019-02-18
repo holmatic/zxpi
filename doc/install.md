@@ -18,6 +18,7 @@
 * PiCam save pic etc
 * More generic Overlay for OUT, sound, etc
 * Graph mode typing, graphics
+* cd /home/pi/zxpi/zxroot && ln -s /media/pi drives
 
 zxroot
 	USER-FILES				PICS DOCS PROGS
@@ -33,8 +34,6 @@ zxroot
 ### Pi Config
 
 
-  cp -rf /media/pi/xxxxx/zxpi ~/
-
    sudo nano /boot/config.txt 
 
    dtoverlay=pi3-disable-bt
@@ -46,8 +45,6 @@ zxroot
    git remote add origin https://github.com/holmatic/zxpi
 
    git pull origin master 
-
-   cd /home/pi/zxpi/zxroot ln -s /media/pi drives
 
    cd /home/pi/zxpi/src && sudo -u pi python3 main.py & 
 

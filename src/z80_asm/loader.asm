@@ -65,7 +65,7 @@ org     $4009 ; BASIC PROGRAMM
    dw 1     ;S_TOP 
    db $FF,$FF,$FF     ;LAST_K 
    db 55    ;MARGIN 
-   dw line10     ;NXTLIN 
+   dw line10     ;NXTLIN   line10   dfile
    dw 0     ;OLDPPC 
    db 0     ;FLAGX 
    dw 0     ;STRLEN 
@@ -170,7 +170,7 @@ BASIC_START:
 	;CALL RCLS	; CLS
 	; get id code
 	CALL PRINTMULTI
-    db c_S,c_E,c_R,64 ;
+    db c_Z,c_X,c_P,c_I,64 ;
 
 	CALL SETCOMREGS
 	;db ADDR_SELB+A_LCR,3	; write baud rate end, set wordlenght 8
@@ -264,7 +264,7 @@ LOADP:
 NOLOAD:
 	; send back what was received
 	; we have jst read the data, so shold hav correct address
-    OUT (COM_DAT),A
+    ;OUT (COM_DAT),A
 	;CALL PRINTHEX
 	JR WTINPLOOP1
 

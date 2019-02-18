@@ -33,20 +33,23 @@ zxroot
 ### Pi Config
 
 
-cp -rf /media/pi/xxxxx/zxpi ~/
+  cp -rf /media/pi/xxxxx/zxpi ~/
 
- sudo nano /boot/config.txt 
+   sudo nano /boot/config.txt 
 
-dtoverlay=pi3-disable-bt
-enable_uart=1
+   dtoverlay=pi3-disable-bt
 
- sudo nano /etc/rc.local 
+   enable_uart=1
+
+   sudo nano /etc/rc.local 
  
- git remote add origin https://github.com/holmatic/zxpi
- git pull origin master 
- cd /home/pi/zxpi/zxroot ln -s /media/pi drives
+   git remote add origin https://github.com/holmatic/zxpi
 
- cd /home/pi/zxpi/src && sudo -u pi python3 main.py & 
+   git pull origin master 
+
+   cd /home/pi/zxpi/zxroot ln -s /media/pi drives
+
+   cd /home/pi/zxpi/src && sudo -u pi python3 main.py & 
 
 
 ### Next Hardware version

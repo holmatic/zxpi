@@ -54,6 +54,7 @@ class ZXLoadConnectHandler:
         self.ser=ser
         self.state=ConnectState.TAPE_COM
         self.tape_out_progress=None # None represents wait&listen time, int is number of bytes in 
+        self.tape_out_holdoff=0  #  expected end of (buffered) sendout
         self.last_time_stamp=time.time()
         lfile=bytearray([0x27,0xa7])+bytearray( open("z80_asm/loader.p", "rb").read() ) # dummy name plus p file
         self.loader=[]   
@@ -64,11 +65,18 @@ class ZXLoadConnectHandler:
 
     def state_handler(self):
         if self.state == ConnectState.TAPE_COM:
+            print(self.ser.in_waiting)
             if self.ser.in_waiting:
                 self.received+=self.ser.read_all()
                 if b'OK' in self.received:
                     print("Received Loader Reply.")
+                    self.received=b''
                     #switch baudrate 
+                    wt=self.tape_out_holdoff+0.08-time.time()
+                    if(wt>0):
+                        print("Wait for holdoff..")
+                        time.sleep(wt)
+                    self.ser.flush()
                     self.ser.write(b'H')
                     time.sleep(0.01)
                     self.ser.baudrate=460800#115200#230400   # 460800
@@ -88,7 +96,9 @@ class ZXLoadConnectHandler:
                                 return
                         time.sleep(0.05) # no busy polling
                     print("No serial line reply, please check UART interface.")
+                    self.ser.baudrate=speed
                     self.last_time_stamp=time.time()
+                    self.tape_out_progress = None
             # check to transmit loader in background
             t=time.time()
             if self.tape_out_progress is None:
@@ -102,8 +112,10 @@ class ZXLoadConnectHandler:
                 # transmit loader in background
                 ttime_sec=t-self.last_time_stamp
                 #print("ttime_sec",ttime_sec)
-                while self.tape_out_progress * 10 / 4800  < ttime_sec+0.8: # send some hundred millisec ahead to have tx buffer always full
+                pre_send_sec=0.8
+                while self.tape_out_progress * 10 / 4800  < ttime_sec+pre_send_sec: # send some hundred millisec ahead to have tx buffer always full
                     self.ser.write( [self.loader[self.tape_out_progress]] )
+                    self.tape_out_holdoff=pre_send_sec+time.time()
                     self.tape_out_progress+=1
                     if self.tape_out_progress>=len(self.loader):
                         # done

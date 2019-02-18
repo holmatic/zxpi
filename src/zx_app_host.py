@@ -481,7 +481,7 @@ class ZxAppHost():
                 if time.time()>=evtt+waittime: break
                 if self.periodic_tasks:
                     self.periodic_tasks[0].check_trigger()
-                time.sleep(0.1)
+                time.sleep(0.05)
 
     def show_msg_win(self, msg, kb_event=None):
         w=min(len(msg),24)

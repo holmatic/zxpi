@@ -47,6 +47,7 @@ class AppPiCam:
         self.invert=False
         self.h_flip=False
         self.v_flip=False
+        self.floyd_stb=False
         self.rotate=False
         self.applied_rot=None
     
@@ -140,8 +141,23 @@ class AppPiCam:
         l0=m-s
         l1=m
         l2=m+s
+        
+        # optional flody-steinberg
+        if self.floyd_stb:
+            l0=max(0,int(m-2*s))
+            l2=min(255,int(m+2*s))
+            for row in range(0,a.shape[0]-1):
+                for col in range(1,a.shape[1]-1):
+                    p=a[row,col]
+                    n=l2 if p>l1 else l0
+                    err=p-n
+                    a[row,col]=n
+                    a[row,col+1]+=err*7//16
+                    a[row+1,col]+=err*3//16
+                    a[row+1,col+1]+=err*5//16
+                    a[row+1,col+1]+=err*1//16
             
-        brightmap=[ 0 if b<l0  else 3 if b>l2 else 1 if b<l1 else 2    for b in range(256)]
+        brightmap=[ 0 if b<=l0  else 3 if b>=l2 else 1 if b<l1 else 2    for b in range(256)]
         #print(brightmap)
         #print(a.mean(),a.std())
         
@@ -170,7 +186,7 @@ class AppPiCam:
 
     def show_help(self):
         self.mainwin.prttxt(str2zx('\n\n <<< ZX LIVE CAMERA >>> \n\n',upper_inv=False ))
-        self.mainwin.prttxt(str2zx('\n\n NEWLINE to start\n\n F fast update\n\n D slow update\n\n I invert\n\n H/V flip  R rotate\n\n 1-5 brightness\n\n 6-0 contrast\n\n X exit',upper_inv=True ))
+        self.mainwin.prttxt(str2zx('\n\n NEWLINE to start\n\n F fast update    S slow update\n\n D dithering\n\n I invert\n\n H/V flip  R rotate\n\n 1-5 brightness\n\n 6-0 contrast\n\n X exit',upper_inv=True ))
                                       
     
     def kb_event(self,win,zxchar):
@@ -188,9 +204,10 @@ class AppPiCam:
             return
         elif s in 'fF':
             self.delay_s=0.15
-
-        elif s in 'dD':
+        elif s in 'sS':
             self.delay_s=3.0
+        elif s in 'dD':
+            self.floyd_stb=not self.floyd_stb
         elif s in 'iI':
             self.invert=not self.invert
         elif s in 'hH':

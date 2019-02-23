@@ -169,23 +169,10 @@ line0:
 BASIC_START:
 	;CALL RCLS	; CLS
 	; get id code
-	CALL PRINTMULTI
-    db c_Z,c_X,c_P,c_I,64 ;
 
 	CALL SETCOMREGS
 	;db ADDR_SELB+A_LCR,3	; write baud rate end, set wordlenght 8
 	db ADDR_SELB+A_MCR,000H	; switch prescaler
-	db ADDR_SELB+A_LCR,083H	;
-	db ADDR_SELB+0,	0		; LSB of divisor, 0 for ID read
-	db ADDR_SELB+1,	0		; MSB of divisor
-    db 0FFH	; end
-
-	LD A, ADDR_SELB+1	; ID when divider=0
-	CALL READCOMREG
-	LD A, ADDR_SELB+0	; ID REV when divider=0
-	CALL READCOMREG
-
-	CALL SETCOMREGS
 	db ADDR_SELB+A_LCR,083H	; write baud rate
 	db ADDR_SELB+0,	192		; LSB of divisor, 192 for 4800 MCR Bit-7=0, or 48 for 1
 	db ADDR_SELB+1,	0		; MSB of divisor
@@ -205,8 +192,8 @@ BASIC_START:
 
 	; dummy read
     ;IN A, (COM_DAT)
-    IN A, (COM_DAT)
-    IN A, (COM_DAT)
+   ; IN A, (COM_DAT)
+    ;IN A, (COM_DAT)
 
 	LD A, 'O'
     OUT (COM_DAT),A
@@ -226,7 +213,6 @@ WTINPLOOP2:
 	LD A, ADDR_SELB+A_RHR
     OUT (COM_ADDR),A
     IN A, (COM_DAT)
-	;CALL READCOMREG
 
 	CP 'H'
 	JR NZ, NOSWSP
@@ -242,7 +228,7 @@ WTINPLOOP2:
 
 NOSWSP:
 	CP 'L'
-	JR NZ, NOLOAD
+	JR NZ, WTINPLOOP1
 	; LOAD a P file
 LOADP:
 	CALL FAST	; here we go
@@ -261,29 +247,6 @@ LOADP:
 	LD HL,4009h	; start of BASIC area to load
 	JP 32719  ; +4000H?
 
-NOLOAD:
-	; send back what was received
-	; we have jst read the data, so shold hav correct address
-    ;OUT (COM_DAT),A
-	;CALL PRINTHEX
-	JR WTINPLOOP1
-
-
-	
-READCOMREG:
-    OUT (COM_ADDR),A
-    ; read scratch pad
-    IN A, (COM_DAT)
-    PUSH AF
-	CALL PRINTHEX
-	XOR A
-	RST_PRTCHAR
-	XOR A
-	RST_PRTCHAR
-	POP AF
-	RET
-
-	
 
 SETCOMREGS:
 	POP HL	; Ret-Adress
@@ -302,46 +265,7 @@ SETCOMEXIT:
 
 
 
-; Print characters after call until bit 6 set, 
-;  USES HL
-PRINTMULTI:
-	POP HL	; Ret-Adress
-PRINTMULT2:
-	LD A,(HL)
-	AND 0BFh
-	RST_PRTCHAR
-	BIT 6,(HL)
-	INC HL
-	JR Z,PRINTMULT2
-	JP (HL)
 
-
-
-; *
-; * AUSGABE A IN HEX
-; *
-PRINTHEX:
-	;PUSH HL
-#ifdef DIAG
-	PUSH BC
-	LD C,A		; SAVE
-	SRL A
-	SRL A
-	SRL A
-	SRL A
-	ADD A,1CH	; Offset to '0'
-	RST 10H
-	LD A,C
-	AND	0FH		; MASK
-	ADD A,1CH	; Offset to '0'
-	RST 10H
-	LD A,C
-	POP BC
-#endif
-	;POP HL
-	RET
-
- 
    db $76   ;N/L 
  
 line10:
@@ -365,6 +289,7 @@ line10:
  
 dfile: 
    db $76 
+   db c_Z,c_X,0,c_P,c_I
    db $76,$76,$76,$76,$76,$76,$76,$76 
    db $76,$76,$76,$76,$76,$76,$76,$76 
    db $76,$76,$76,$76,$76,$76,$76,$76 

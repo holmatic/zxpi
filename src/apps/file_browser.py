@@ -5,7 +5,7 @@ from pathlib import Path
 from shutil import copyfile
 import importlib
 import traceback
-
+import time
 
 
 
@@ -95,9 +95,10 @@ class AppFileBrowser:
                 elif fi.suffix.lower()=='.p':
                     name=str(fi)
                     print("LOAD ",name)
-                    mwin=self.mgr.show_msg_win(str2zx("load %s .."%(name)))
+                    mwin=self.mgr.show_msg_win(str2zx("load %s .."%(fi.stem)))
                     mwin.close()
                     self.mgr.server.load_p_file(name)
+                    #time.sleep(0.5) # todo remove, was just for diag
                 elif fi.suffix.lower()=='.py':
                     mwin=self.mgr.show_msg_win(str2zx("open %s .."%(fi.stem)))
                     try:

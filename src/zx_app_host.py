@@ -476,6 +476,8 @@ class ZxAppHost():
             if self.screenaddr is not None:
                 self.invalidate_curr_screen()
                 self.screenaddr=None
+                self.kb_scan.kbuf.clear()
+                self.kb_scan.last_key_pattern=KEYPATTERN_NO_KEY
             while True:
                 self.server.handle_input()
                 if time.time()>=evtt+waittime: break

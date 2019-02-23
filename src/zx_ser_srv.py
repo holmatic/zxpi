@@ -65,7 +65,7 @@ class ZXLoadConnectHandler:
 
     def state_handler(self):
         if self.state == ConnectState.TAPE_COM:
-            print(self.ser.in_waiting)
+            #print("SI",self.ser.in_waiting)
             if self.ser.in_waiting:
                 self.received+=self.ser.read_all()
                 if b'OK' in self.received:
@@ -90,6 +90,7 @@ class ZXLoadConnectHandler:
                     t=time.time()
                     while time.time()<t+TIMEOUT_SEC:
                         if self.ser.in_waiting:
+                            print("RI",self.ser.in_waiting)
                             if self.ser.read(1)[-1]==SYNC_REPLY: # expected reply
                                 print("Connection established.")
                                 self.state=ConnectState.SER_COM

@@ -20,6 +20,9 @@ if __name__ == '__main__':
     #speed=9600
     os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\loader.asm z80_asm\loader.p''')
     os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\serserv.asm z80_asm\serserv.p''')
+    os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\zxpiload.asm z80_asm\zxpiload.p''')
+    os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\zxpiload.asm z80_asm\zxpiload.p''')
+    os.replace('z80_asm\zxpiload.p','..\zxroot\zx81-tools\zxpiload.p')
     
     time.sleep(1) # as the script might run as an automated startup, wait a bit till cpu gets less busy
     

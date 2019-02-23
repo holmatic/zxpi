@@ -18,7 +18,7 @@ import requests
 
 if __name__ == '__main__':
     #speed=9600
-    try:
+    try: # development only
         os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\loader.asm z80_asm\loader.p''')
         os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\serserv.asm z80_asm\serserv.p''')
         os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\zxpiload.asm z80_asm\zxpiload.p''')

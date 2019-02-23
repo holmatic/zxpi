@@ -34,6 +34,8 @@ Afterwards, a reboot is required to apply the changes
 First, make sure your Pi has access to the internet. This allows to just use `git` to get the latest version.
 
 In the home directory of the `pi`user, apply
+
+	git init
  
     git remote add origin https://github.com/holmatic/zxpi
 

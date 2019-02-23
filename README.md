@@ -44,10 +44,18 @@ This should create the `zxpi` project. It is started by
     python3 main.py & 
 
 
-Or, if you want it to auto-start
+## Auto-start
+
+If you want it to auto-start the Raspberry Pi side of the software
 
     sudo nano /etc/rc.local 
 
 And add the start command at the end (but still before `exit`)
 
     cd /home/pi/zxpi/src && sudo -u pi python3 main.py & 
+
+## The Zeddy side
+
+On the _ZX81_, just enter `LOAD ""` (on a ZX81NU, use `LOAD "-"`)    
+    
+    

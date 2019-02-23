@@ -2,16 +2,21 @@
 
 This is a small experimental project connecting a ZX81 computer to a Raspberry Pi via
 serial interface. The project mainly uses Python3 on the PI but also uses Z80 code
-for interfacing (ZX81 as terminal).  
+for interfacing (ZX81 as terminal). It can demonstrate things like loading of ZX81 programs,
+low-res-camera and internet usage.
 
-The project is in a very early stage. 
+***The project is in a very early stage.*** 
 
 
+
+## Getting started
+
+First part is about preparing the Raspberry Pi. It is written for the Zero W(H), other models may differ
+in terms of what is needed to configure the serial port.
 
 ### Configuration of your Raspberry Pi and Installation
 
-
-This project uses the GPIO serial interface of the Pi. For the Pi Zero WH, this port is initially used by the
+This project uses the GPIO serial interface of the Pi. For the Pi Zero W(H), this port is initially used by the
 blutooth interface, and thus we have to change the configuration a little. Assuming `nano` as an text editor:
 
     sudo nano /boot/config.txt 

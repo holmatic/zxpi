@@ -26,11 +26,13 @@ if __name__ == '__main__':
         os.replace('z80_asm\zxpiload.p','..\zxroot\zx81-tools\zxpiload.p')
     except:pass
     try:
-        dst,src="..\zxroot\drives","/media/pi"
+        dst,src="../zxroot/drives","/media/pi"
         if os.access(src, os.R_OK) and not  os.access(dst, os.R_OK):
             print("Create link to external drives")
             os.symlink(src, dst)
-    except:pass
+    except:
+        print("Fail")
+    
     time.sleep(1) # as the script might run as an automated startup, wait a bit till cpu gets less busy
     
     con=zx_ser_srv.ZXLoadConnectHandler(zx_ser_srv.get_serial_port( ['COM4','COM3','/dev/ttyAMA0'] ))

@@ -146,16 +146,21 @@ class AppPiCam:
         if self.floyd_stb:
             l0=max(0,int(m-2*s))
             l2=min(255,int(m+2*s))
-            for row in range(0,a.shape[0]-1):
-                for col in range(1,a.shape[1]-1):
+            nr,nc=a.shape[0],a.shape[1]
+            for row in range(0,nr):
+                for col in range(0,nc):
                     p=a[row,col]
                     n=l2 if p>l1 else l0
                     err=p-n
                     a[row,col]=n
-                    a[row,col+1]+=err*7//16
-                    a[row+1,col]+=err*3//16
-                    a[row+1,col+1]+=err*5//16
-                    a[row+1,col+1]+=err*1//16
+                    if col<nc-1:
+                        a[row,col+1]+=err*7//16
+                    if row<nr-1:
+                        if col>=1:
+                            a[row+1,col-1]+=err*3//16
+                        a[row+1,col]+=err*5//16
+                        if col<nc-1:
+                            a[row+1,col+1]+=err*1//16
             
         brightmap=[ 0 if b<=l0  else 3 if b>=l2 else 1 if b<l1 else 2    for b in range(256)]
         #print(brightmap)

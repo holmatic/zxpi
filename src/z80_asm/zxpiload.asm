@@ -154,10 +154,10 @@ BASIC_START:
 	db ADDR_SELB+1,	0		; MSB of divisor
     db 0FFH	; end
 
-	LD A, ADDR_SELB+1	; ID when divider=0
-	CALL READCOMREG
-	LD A, ADDR_SELB+0	; ID REV when divider=0
-	CALL READCOMREG
+	;LD A, ADDR_SELB+1	; ID when divider=0
+	;CALL READCOMREG
+	;LD A, ADDR_SELB+0	; ID REV when divider=0
+	;CALL READCOMREG
 
 	CALL SETCOMREGS
 	db ADDR_SELB+A_LCR,083H	; write baud rate

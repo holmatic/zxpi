@@ -25,6 +25,12 @@ if __name__ == '__main__':
         os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\zxpiload.asm z80_asm\zxpiload.p''')
         os.replace('z80_asm\zxpiload.p','..\zxroot\zx81-tools\zxpiload.p')
     except:pass
+    try:
+        dst,src="..\zxroot\drives","/media/pi"
+        if os.access(src, os.R_OK) and not  os.access(dst, os.R_OK):
+            print("Create link to external drives")
+            os.symlink(src, dst)
+    except:pass
     time.sleep(1) # as the script might run as an automated startup, wait a bit till cpu gets less busy
     
     con=zx_ser_srv.ZXLoadConnectHandler(zx_ser_srv.get_serial_port( ['COM4','COM3','/dev/ttyAMA0'] ))
@@ -33,18 +39,7 @@ if __name__ == '__main__':
     with zx_ser_srv.ZXSerServ(con) as sersrv:
         
         m=zx_app_host.ZxAppHost(sersrv)
-        print(111)
-        #for i in range(20):
-        #    m.update(1)
-        
-        
-        
-#        pc=apps.pi_cam.AppPiCam(m)
-#        while True:
-#            m.update(0.7)
-        #sh=apps.shell.AppShell(m)
         sh=apps.file_browser.AppFileBrowser(m)
-        print(112)
         while True:
             m.update(0.7)
         

@@ -236,7 +236,6 @@ HAVEDATA:
 	db ADDR_SELB+A_LCR,3	; write baud rate end, set wordlenght 8
 	;db ADDR_SELB+A_FCR,7	; enable and reset fifos
     db 0FFH	; end
-WAIT2S:
     LD A,100 ; set timeout high
     LD (16436),A ; FRAMES
 	JR WTINPLOOP1

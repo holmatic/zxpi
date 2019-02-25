@@ -9,16 +9,16 @@
 * ! Eliminate .. in path
 * ! Make full 32x24 screen available by overlaying code
 * Apps
-    * Console
-    * Dialog windows, lineditor etc
-    * File system browser
-    * Telnet etc
+  * Console
+  * Dialog windows, lineditor etc
+  * File system browser
+  * Telnet etc
+  * PiCam save pic as 768 bytes or as 1k Prog with just pause
 * ! Load programs via tape or direct (hidden) UART loader
 * KB read cycle connected to uppermost window!
 * Save programs via `USR` loader
 * p Loader as file, loader with break
 * ! Loop in server 4800 baud mode to wait for 'OK' from sersrv, or 'SV' from pre-placed `USR` save routine 
-* PiCam save pic etc
 * Link to DRIVE
 * More generic Overlay for OUT, sound, etc
 * Graph mode typing, graphics

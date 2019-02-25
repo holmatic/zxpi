@@ -230,8 +230,11 @@ def str2zx(s, inverse=False, upper_inv=False):
     zx=[   unicode2zx_tbl.get(c,4) | (128 if inverse or (upper_inv and c.isupper()) else 0)  for c in s]
     return zx
 
-def zx2str(zx):
-    s=''.join([ zxcode2uni_tbl.get(c,'*') for c in zx])
+def zx2str(zx, to_lower=False):
+    if to_lower:
+        s=''.join([ zxcode2uni_tbl.get(c,'*').lower() for c in zx])
+    else:
+        s=''.join([ zxcode2uni_tbl.get(c,'*') for c in zx])
     return s
 
 

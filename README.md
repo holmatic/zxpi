@@ -14,7 +14,7 @@ low-res-camera and internet usage.
 First part is about preparing the Raspberry Pi. It is written for the Zero W(H), other models may differ
 in terms of what is needed to configure the serial port.
 
-## Configuration of your Raspberry Pi and Installation
+## Configuration of your Raspberry Pi and installation
 
 This project uses the GPIO serial interface of the Pi. For the Pi Zero W(H), this port is initially used by the
 blutooth interface, and thus we have to change the configuration a little. Assuming `nano` as an text editor:
@@ -76,4 +76,5 @@ And add the start command at the end (but still before `exit`)
 
 On the _ZX81_, just enter `LOAD ""` (on a ZX81NU, use `LOAD "-"`)    
     
+If the Pi is running and all connected, the main menu should show up.
     

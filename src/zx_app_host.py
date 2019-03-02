@@ -227,7 +227,7 @@ zxcode2uni_tbl[118]='\n'
 zxcode2uni_tbl[119]='\b'
 
 def str2zx(s, inverse=False, upper_inv=False):
-    zx=[   unicode2zx_tbl.get(c,4) | (128 if inverse or (upper_inv and c.isupper()) else 0)  for c in s]
+    zx=[   unicode2zx_tbl.get(c,4) | (128 if c not in '\n\r' and (inverse or (upper_inv and c.isupper())) else 0)  for c in s]
     return zx
 
 def zx2str(zx, to_lower=False):

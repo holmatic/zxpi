@@ -13,6 +13,8 @@ from threading  import Thread
 
 import sys
 import os
+from Tools.scripts.pdeps import inverse
+from asyncio.tasks import sleep
 
 
 class ListenerThread:
@@ -23,11 +25,13 @@ class ListenerThread:
         self.conn=None
         self.addr=None
         self.nick='user'
+        self.passw=''
 
         
-    def start(self, addr,nick):
+    def start(self, addr,nick,passw):
         self.addr=addr
         self.nick=nick
+        self.passw=passw
         self.outThread = Thread(target=self.out_handler_thread, args=(self,))
         self.outThread.start()
 
@@ -39,7 +43,7 @@ class ListenerThread:
 
     def send(self,sstr):
         print("SEND:",sstr)
-        self.conn.send(sstr.encode("utf-8"))
+        if self.conn: self.conn.send(sstr.encode("utf-8"))
 
     def out_handler_thread(self,p):
         print("out_handler_thread starts...")
@@ -52,36 +56,49 @@ class ListenerThread:
             try:
                 while True:
                     print("read data: ")
-                    data = self.conn.recv(1024).decode("utf-8").strip()
-                    if not data:
+                    alldata = self.conn.recv(4096).decode("utf-8").strip()
+                    if not alldata:
                         break
-                    print(data)
-                    z=b''
-                    if data.startswith('PING') and ':' in data:
-                        self.send('PONG :%s\r\n'%(data.split(':')[1]))
-                    elif registered and 'JOIN' in data and '#' in data and data.count(':')==1:
-                        h1,h2=data.split(':',maxsplit=2)
-                        z=str2zx( '\n<%s> joins %s'%( h2.split("!")[0],h2.split('#')[1]  )   )
-                    elif data.count(':')>=2:
-                        h1,h2,txt=data.split(':',maxsplit=2)
-                        if "433" in h2: # already in use
-                            nick+=nick
-                            registered=False
-                        if 'NOTICE' in h2 and  'No Ident response' in txt:
-                            registered=False
-                        if "001" in h2: # welcome
-                            registered=True
-                        if not registered:
-                            self.send('NICK %s\r\n'%nick)
-                            self.send('USER %s * * : %s\r\n'%(nick,nick)  )
-                            registered=True
-                        if registered:
-                            z=str2zx( '\n<%s> %s'%( h2.split("!")[0],txt.strip()  )   )
-                        else:
-                            z=str2zx('\n'+data+'\n')
-                    for c in z:
-                        self.win.prtchar(c)
-                    time.sleep(0.05)
+                    for data in alldata.splitlines():
+                        print(data)
+                        z=b''
+                        if data.startswith('PING') and ':' in data:
+                            self.send('PONG :%s\r\n'%(data.split(':')[1]))
+                        elif registered and 'JOIN' in data and '#' in data and data.count(':')==1:
+                            h1,h2=data.split(':',maxsplit=2)
+                            z=str2zx( '\n<%s> joins %s'%( h2.split("!")[0],h2.split('#')[1]  ) , inverse=True  )
+                        elif registered and 'PART' in data and '#' in data and data.count(':')==1:
+                            h1,h2=data.split(':',maxsplit=2)
+                            z=str2zx( '\n<%s> has left %s'%( h2.split("!")[0],h2.split('#')[1]  ) , inverse=True  )
+                        elif registered and 'MODE' in data and '#' in data and data.count(':')==1:
+                            pass # ignore
+                        elif data.count(':')>=2:
+                            h1,h2,txt=data.split(':',maxsplit=2)
+                            if "433" in h2: # already in use
+                                nick+='ette'
+                                registered=False
+                            #if 'NOTICE' in h2 and  'No Ident response' in txt:
+                            #    registered=False
+                            if "001" in h2: # welcome
+                                registered=True
+                            if not registered:
+                                if self.passw: self.send('PASS %s\r\n'%self.passw)
+                                self.send('NICK %s\r\n'%nick)
+                                self.send('USER %s * * : %s\r\n'%(nick,nick)  )
+                                registered=True
+                            if registered:
+                                if '!' in h2: 
+                                    z=str2zx( '\n<%s> %s'%( h2.split("!")[0],txt.strip()  )   )
+                                else:
+                                    z=str2zx( '\n>> %s'%( txt.strip()  )   )
+                            else:
+                                z=str2zx('\n'+data+'\n')
+                        elif data.count(':')==1:
+                            h1,h2=data.split(':')
+                            z=str2zx('\n'+h2+'\n')
+                        for c in z:
+                            self.win.prtchar(c)
+                        time.sleep(0.05)
             except:
                 print ("Unexpected error:", sys.exc_info()[0])
             finally:
@@ -174,11 +191,12 @@ class LinEd:
 
 
 class InpMode(enum.Enum):
-    MENU=0
-    INP_SRV=1
-    INP_PORT=2
-    INP_PWORD=3
-    ONLINE=4
+    MENU = enum.auto()
+    INP_SRV = enum.auto()
+    INP_NICK = enum.auto()
+    INP_PORT = enum.auto()
+    INP_PWORD = enum.auto()
+    ONLINE = enum.auto()
 
 class IrcClient:
     
@@ -188,6 +206,7 @@ class IrcClient:
         self.inp_win=TextWindow(mgr,30,2,1,21,border=WindowBorderFrame(),kb_event=self.kb_event, cursor_off=True)
         self.revent=mgr.schedule_event(self.periodic,0.5,0.5)
         self.ed=None
+        self.nick='zx-user' 
         self.server="irc.freenode.net"
         self.pword=''
         self.port=6667
@@ -196,7 +215,6 @@ class IrcClient:
         self.choose_site()
         self.revent=mgr.schedule_event(self.periodic,2,2)
         self.channel=''
-        self.nick='zxuser' 
 
     def periodic(self):
         if self.inp_mode==InpMode.ONLINE and self.listener.self.conn:
@@ -207,6 +225,7 @@ class IrcClient:
         self.mainwin.cls()
         self.mainwin.prttxt(str2zx('\n\n',upper_inv=True ))
         self.mainwin.prttxt(str2zx('       ZXPI IRC CHAT CLIENT     ',inverse=True ))
+        self.mainwin.prttxt(str2zx('\n\n N >nick   (%s)'%(self.nick),upper_inv=True ))
         self.mainwin.prttxt(str2zx('\n\n S >server (%s)'%(self.server),upper_inv=True ))
         self.mainwin.prttxt(str2zx('\n\n P >port   (%d)'%(self.port),upper_inv=True ))
         self.mainwin.prttxt(str2zx('\n\n W >password (%s)'%('*'*len(self.pword) if len(self.pword) else 'none'),upper_inv=True ))
@@ -216,7 +235,7 @@ class IrcClient:
         
     def connect(self):
         self.revent.reschedule(3.0,1.0) # give 3 sec for connect
-        self.listener.start(  (self.server,self.port),self.nick  )
+        self.listener.start(  (self.server,self.port),self.nick,self.pword  )
         self.inp_mode=InpMode.ONLINE
         self.mainwin.cls()
         self.mainwin.prttxt(str2zx('\n\nCONNECT to %s..\n\n'%(self.server),upper_inv=True )) 
@@ -251,27 +270,33 @@ class IrcClient:
                 self.inp_win.prttxt(str2zx(' please enter pass word: ',inverse=True ))
                 self.ed=LinEd(self.inp_win,0,1,29,255)
                 self.inp_mode=InpMode.INP_PWORD
+            elif char==51: # N
+                self.inp_win.cls()
+                self.inp_win.prttxt(str2zx(' please enter nickname: ',inverse=True ))
+                self.ed=LinEd(self.inp_win,0,1,29,255,bytes(str2zx(self.nick)))
+                self.inp_mode=InpMode.INP_NICK
             elif char==40: # C
                 self.inp_win.cls()
-                self.inp_win.prttxt(str2zx(' /join ch  or  msg  or  /quit ',inverse=False ))
+                self.inp_win.prttxt(str2zx('   /join /part /quit /help',inverse=False ))
                 self.ed=LinEd(self.inp_win,0,1,29,255)
                 self.connect()
             elif char==61 or char==117: # x or break            
                 self.close()
                 app.clear()
                 # TODO clear threads 
-        elif self.inp_mode in (InpMode.INP_SRV,InpMode.INP_PORT,InpMode.INP_PWORD):
+        elif self.inp_mode in (InpMode.INP_SRV,InpMode.INP_PORT,InpMode.INP_PWORD,InpMode.INP_NICK):
             if char in (117,118): # enter,break 
                 if char==118: # enter
-                    if self.inp_mode==InpMode.INP_SRV and self.ed.val.strip():
-                        self.server=zx2str(self.ed.val,to_lower=True)
+                    if self.inp_mode==InpMode.INP_SRV:
+                        if self.ed.val.strip(): self.server=zx2str(self.ed.val,to_lower=True)
+                    if self.inp_mode==InpMode.INP_NICK:
+                        if self.ed.val.strip(): self.nick=zx2str(self.ed.val,to_lower=True)
                     elif self.inp_mode==InpMode.INP_PWORD:
                         self.pword=zx2str(self.ed.val,to_lower=True)
                     else:
-                        if self.ed.val.strip():
-                            try:
-                                self.port=int(zx2str(self.ed.val))
-                            except: pass
+                        try:
+                            self.port=int(zx2str(self.ed.val))
+                        except: pass
                 self.ed.close()
                 self.ed=None
                 self.inp_mode=InpMode.MENU
@@ -282,7 +307,9 @@ class IrcClient:
             if char==118: # enter
                 s=zx2str(self.ed.val, to_lower=True).strip()
                 self.ed.clear()
-                if s.startswith("/quit"):
+                if s.startswith("/q"):
+                    self.listener.send('QUIT :bye\r\n'  )
+                    time.sleep(0.1)
                     self.disconnect()
                     self.ed.close()
                     self.ed=None
@@ -291,6 +318,26 @@ class IrcClient:
                 elif s.startswith("/join ") and len(s.split())==2:
                     self.channel='#'+s.split()[1]
                     self.listener.send('JOIN %s\r\n'%(self.channel)  )
+                elif s.startswith("/part") and self.channel:
+                    self.listener.send('PART %s\r\n'%(self.channel)  )
+                    self.channel=''
+                elif s.startswith("/list"):
+                    self.listener.send('LIST\r\n' )
+                elif s.startswith("/names"):
+                    self.listener.send('NAMES %s\r\n'%(self.channel)  )
+                elif s.startswith("/h"):
+                    z=str2zx( '\n\n HELP on the irc client usage \n\n'  ,inverse=True )
+                    z+=str2zx( '\n/JOIN <mychannel>  join channel\n      (just omit the hash tag)\n'  ,upper_inv=True )
+                    z+=str2zx( '\n/PART   leave the channel\n'  ,upper_inv=True )
+                    z+=str2zx( '\n/NAMES  show who is there\n'  ,upper_inv=True )
+                    z+=str2zx( '\n/LIST   list all channels\n'  ,upper_inv=True )
+                    z+=str2zx( '\n/QUIT   exit from server\n'  ,upper_inv=True )
+                    z+=str2zx( '\notherwise, just type a message to the channel you joined\n'  ,upper_inv=True )
+                    z+=str2zx( '\n        have fun       '  ,inverse=True )
+                    self.mainwin.prttxt(z)
+                elif s.startswith("/"):
+                    z=str2zx( '\n??? unknown cmd %s'%(  s.strip()  )   )
+                    self.mainwin.prttxt(z)
                 else :
                     self.listener.send('PRIVMSG %s :%s\r\n'%(self.channel,s)  )
                     z=str2zx( '\n<%s> %s'%( self.nick,s.strip()  )   )

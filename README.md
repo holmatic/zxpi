@@ -27,7 +27,7 @@ In the configuration, the following lines have to be changed or added:
 
     enable_uart=1
 
-Afterwards, a reboot is required to apply the changes
+Also, the serial console needs to be disabled. Afterwards, a reboot is required to apply the changes
 
 ## Installing the project
 

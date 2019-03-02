@@ -14,7 +14,7 @@ low-res-camera and internet usage.
 First part is about preparing the Raspberry Pi. It is written for the Zero W(H), other models may differ
 in terms of what is needed to configure the serial port.
 
-### Configuration of your Raspberry Pi and Installation
+## Configuration of your Raspberry Pi and Installation
 
 This project uses the GPIO serial interface of the Pi. For the Pi Zero W(H), this port is initially used by the
 blutooth interface, and thus we have to change the configuration a little. Assuming `nano` as an text editor:
@@ -27,13 +27,23 @@ In the configuration, the following lines have to be changed or added:
 
     enable_uart=1
 
-Also, the serial console needs to be disabled. Afterwards, a reboot is required to apply the changes
+Also, the serial console needs to be disabled in the configuration. Afterwards, a reboot is required to apply the changes
 
 ## Installing the project
 
 First, make sure your Pi has access to the internet. This allows to just use `git` to get the latest version.
 
-In the home directory of the `pi`user
+Make sure that the following packages are installed (they usually come with most standard distributions):
+
+* Python >= 3.5
+* Python packages (use `pip install` or `pip3 install` if needed)
+    * serial
+    * picamera (if you have a camera connected)
+    * numpy
+    * requests
+* Git
+
+Okay, now for the project itelf. In the home directory of the `pi`user
 
 	mkdir zxpi
 	

@@ -184,12 +184,12 @@ class LinEd:
 
 
 class InpMode(enum.Enum):
-    MENU = enum.auto()
-    INP_SRV = enum.auto()
-    INP_NICK = enum.auto()
-    INP_PORT = enum.auto()
-    INP_PWORD = enum.auto()
-    ONLINE = enum.auto()
+    MENU = 1
+    INP_SRV = 2
+    INP_NICK = 3
+    INP_PORT = 4
+    INP_PWORD = 5
+    ONLINE = 6
 
 class IrcClient:
     

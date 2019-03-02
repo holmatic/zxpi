@@ -407,15 +407,16 @@ class ZxAppHost():
             while sl<NUM_LINES: #24
                 self.syncline+=1
                 if self.screenbuf[sl] != self.curr_screen[sl]: # TODO use difflib here?s
+                    t=self.screenbuf[sl][:] # we might have concurrent accesses if we use threads, copy to stay consistent
                     spos=None
                     lpos=0
-                    for i,(s,c) in enumerate(zip(self.screenbuf[sl],self.curr_screen[sl])):
+                    for i,(s,c) in enumerate(zip(t,self.curr_screen[sl])):
                         if s!=c:
                             lpos=i
                             if spos is None: spos=i
                     #print("Sync",self.screenaddr+1+33*sl+spos,lpos)
-                    self.server.cmd_multipoke(self.screenaddr+1+33*sl+spos, list(self.screenbuf[sl][spos:lpos+1]) )
-                    self.curr_screen[sl]=self.screenbuf[sl][:]
+                    self.server.cmd_multipoke(self.screenaddr+1+33*sl+spos, list(t[spos:lpos+1]) )
+                    self.curr_screen[sl]=t
                     return False
                 sl=self.syncline
             self.syncline=0

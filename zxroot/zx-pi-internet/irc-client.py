@@ -204,7 +204,6 @@ class IrcClient:
         self.mgr=mgr
         self.mainwin=TextWindow(mgr,32,20,0,0)
         self.inp_win=TextWindow(mgr,30,2,1,21,border=WindowBorderFrame(),kb_event=self.kb_event, cursor_off=True)
-        self.revent=mgr.schedule_event(self.periodic,0.5,0.5)
         self.ed=None
         self.nick='zx-user' 
         self.server="irc.freenode.net"
@@ -217,9 +216,12 @@ class IrcClient:
         self.channel=''
 
     def periodic(self):
-        if self.inp_mode==InpMode.ONLINE and self.listener.self.conn:
+        if self.inp_mode==InpMode.ONLINE and not self.listener.conn:
             self.mainwin.prttxt(str2zx('\n\nDISCONNECT\n\n',upper_inv=True ))
             self.disconnect()
+            self.mgr.update(1.5)
+            self.choose_site()
+
         
     def choose_site(self):
         self.mainwin.cls()
@@ -234,7 +236,7 @@ class IrcClient:
         self.inp_win.prttxt(str2zx('please select'))
         
     def connect(self):
-        self.revent.reschedule(3.0,1.0) # give 3 sec for connect
+        self.revent.reschedule(15.0,1.0) # give 3 sec for connect
         self.listener.start(  (self.server,self.port),self.nick,self.pword  )
         self.inp_mode=InpMode.ONLINE
         self.mainwin.cls()
@@ -244,10 +246,9 @@ class IrcClient:
         self.listener.close()
         self.inp_mode=InpMode.MENU
         
-    def periodic(self):
-        pass#self.event.wait(timeout=0.1)
 
     def close(self):
+        self.revent.remove()
         self.disconnect()
         if self.ed: self.ed.close()
         self.mainwin.close()
@@ -326,14 +327,15 @@ class IrcClient:
                 elif s.startswith("/names"):
                     self.listener.send('NAMES %s\r\n'%(self.channel)  )
                 elif s.startswith("/h"):
+                    self.mainwin.cls()
                     z=str2zx( '\n\n HELP on the irc client usage \n\n'  ,inverse=True )
                     z+=str2zx( '\n/JOIN <mychannel>  join channel\n      (just omit the hash tag)\n'  ,upper_inv=True )
                     z+=str2zx( '\n/PART   leave the channel\n'  ,upper_inv=True )
                     z+=str2zx( '\n/NAMES  show who is there\n'  ,upper_inv=True )
                     z+=str2zx( '\n/LIST   list all channels\n'  ,upper_inv=True )
                     z+=str2zx( '\n/QUIT   exit from server\n'  ,upper_inv=True )
-                    z+=str2zx( '\notherwise, just type a message to the channel you joined\n'  ,upper_inv=True )
-                    z+=str2zx( '\n        have fun       '  ,inverse=True )
+                    z+=str2zx( '\n after joining, type a message   to all users in that channel\n'  ,upper_inv=True )
+                    z+=str2zx( '\n        have fun       \n'  ,inverse=True )
                     self.mainwin.prttxt(z)
                 elif s.startswith("/"):
                     z=str2zx( '\n??? unknown cmd %s'%(  s.strip()  )   )

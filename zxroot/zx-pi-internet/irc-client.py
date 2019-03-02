@@ -78,12 +78,12 @@ class ListenerThread:
                         if registered:
                             z=str2zx( '\n<%s> %s'%( h2.split("!")[0],txt.strip()  )   )
                         else:
-                            z=str2zx(data)
+                            z=str2zx('\n'+data+'\n')
                     for c in z:
                         self.win.prtchar(c)
                     time.sleep(0.05)
-            except e:
-                print( e )
+            except:
+                print ("Unexpected error:", sys.exc_info()[0])
             finally:
                 self.connected=False
                 self.conn=None
@@ -196,6 +196,7 @@ class IrcClient:
         self.choose_site()
         self.revent=mgr.schedule_event(self.periodic,2,2)
         self.channel=''
+        self.nick='zxuser' 
 
     def periodic(self):
         if self.inp_mode==InpMode.ONLINE and self.listener.self.conn:
@@ -215,7 +216,7 @@ class IrcClient:
         
     def connect(self):
         self.revent.reschedule(3.0,1.0) # give 3 sec for connect
-        self.listener.start(  (self.server,self.port), 'zxuser'  )
+        self.listener.start(  (self.server,self.port),self.nick  )
         self.inp_mode=InpMode.ONLINE
         self.mainwin.cls()
         self.mainwin.prttxt(str2zx('\n\nCONNECT to %s..\n\n'%(self.server),upper_inv=True )) 
@@ -291,7 +292,9 @@ class IrcClient:
                     self.channel='#'+s.split()[1]
                     self.listener.send('JOIN %s\r\n'%(self.channel)  )
                 else :
-                    self.listener.send('PRIVMSG %s: %s\r\n'%(self.channel,s)  )
+                    self.listener.send('PRIVMSG %s :%s\r\n'%(self.channel,s)  )
+                    z=str2zx( '\n<%s> %s'%( self.nick,s.strip()  )   )
+                    self.mainwin.prttxt(z)
             else:
                 self.ed.kb_event(char)
             

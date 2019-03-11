@@ -5,6 +5,7 @@ Created on Mar 12, 2016
 '''
 import os
 import time
+import platform
 import zx_ser_srv
 import zx_app_host
 from zx_app_host import str2zx
@@ -18,13 +19,14 @@ import requests
 
 if __name__ == '__main__':
     #speed=9600
-    try: # development only
-        os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\loader.asm z80_asm\loader.p''')
-        os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\serserv.asm z80_asm\serserv.p''')
-        os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\zxpiload.asm z80_asm\zxpiload.p''')
-        os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\zxpiload.asm z80_asm\zxpiload.p''')
-        os.replace('z80_asm\zxpiload.p','..\zxroot\zx81-tools\zxpiload.p')
-    except:pass
+    if "Windows" in platform.system():
+        try: # development only
+            os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\loader.asm z80_asm\loader.p''')
+            os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\serserv.asm z80_asm\serserv.p''')
+            os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\zxpiload.asm z80_asm\zxpiload.p''')
+            os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\zxpiload.asm z80_asm\zxpiload.p''')
+            os.replace('z80_asm\zxpiload.p','..\zxroot\zx81-tools\zxpiload.p')
+        except:pass
     try:
         dst,src="../zxroot/drives","/media/pi"
         if os.access(src, os.R_OK) and not  os.access(dst, os.R_OK):

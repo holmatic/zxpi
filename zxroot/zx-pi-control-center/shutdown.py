@@ -39,9 +39,9 @@ class Shutdown:
         s=zx2str( [zxchar] )
         if s in 'sS' or zxchar==12:
             if "Linux" in platform.system():
-                subprocess.run(["shutdown", "-h", "now"])
+                subprocess.run(["sudo","shutdown", "-h", "0"])
                 self.mainwin.cls()
-                self.mainwin.prttxt(str2zx('\nshutdown initiated. \n\n    good bye.',upper_inv=True ))
+                self.mainwin.prttxt(str2zx('\nshutdown initiated\n\n    good bye.',upper_inv=True ))
             else:
                 self.mainwin.prttxt(str2zx('\nshutdown not supported on %s host.'%( platform.system() ),upper_inv=False ))
         elif s in 'xX':

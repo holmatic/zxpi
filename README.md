@@ -42,6 +42,7 @@ Make sure that the following packages are installed (they usually come with most
     * numpy
     * requests
 * Git
+* rng-tools (e.g. version 5-5-1) is needed for a (low entropy) raspberry pi without keyboard and mouse
 
 Okay, now for the project itelf. In the home directory of the `pi`user
 

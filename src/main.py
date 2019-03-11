@@ -33,7 +33,7 @@ if __name__ == '__main__':
     except:
         print("Fail")
     
-    time.sleep(1) # as the script might run as an automated startup, wait a bit till cpu gets less busy
+    time.sleep(2) # as the script might run as an automated startup, wait a bit till cpu gets less busy
     
     con=zx_ser_srv.ZXLoadConnectHandler(zx_ser_srv.get_serial_port( ['COM4','COM3','/dev/ttyAMA0'] ))
     

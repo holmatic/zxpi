@@ -1,5 +1,6 @@
 
 from zx_app_host import TextWindow, WindowBorderFrame, str2zx, zx2str, ZXCHAR_BLANK, ZXCHAR_INV_FLG
+from concurrent.futures._base import RUNNING
 
 
 try:
@@ -15,6 +16,7 @@ import numpy
 import time
 import pickle
 import random
+from enum import Enum
 
 if not cam_available: # load dummy
     p= b'\x80\x02cnumpy.core.multiarray\n_reconstruct\nq\x00cnumpy\nndarray\nq\x01K\x00\x85q\x02c_codecs\nencode\nq\x03X\x01\x00\x00\x00bq\x04X\x06\x00\x00\x00latin1q\x05\x86q\x06Rq\x07\x87q\x08Rq\t(K\x01K0K@\x86q\ncnumpy\ndtype\nq\x0bX\x02\x00\x00\x00u1q\x0cK\x00K\x01\x87q\rRq\x0e(K\x03X\x01\x00\x00\x00|q\x0fNNNJ\xff\xff\xff\xffJ\xff\xff\xff\xffK\x00tq\x10b\x89h\x03X=\x0c\x00\x00ple]UNHCB?>====>?@ACDFHJJKMORTWYZ\\bfjnooopsu\xc2\x80vmf`\\ZXWUTSTUWX_cnrohaYRJDB@>>==<>??ABCEGIKMLNPRTWY\\_bejlpooqpr}ohb[WVSRONPRTVY[[]jhe^UMGB@?>>>===?@BCDFIKMNNPQSUXZ\\_dfhkmnnnosykc^XTRPNHGKRVYVOZYo^]ZPGC@?=====>?ABCDFHJLNOORSTVWY[_cfiiilkkmrsfa[UQNKFDCGRYYQPTgwJFDAB@>======?@ACDFGIKLNOPQRTUVW[]aeffhihhjskb]WRNHCAAABGOTY_p}u==<<=<<;;<<<>?@BDEGIKLMOPOPRSUVW[\\`abddeedgpd_ZTOFC@A?;=DLVk\xc2\x9d\xc3\x81\xc2\x93\xc2\x82:::::::;;;<=?@BCEGIJLNOQRQQQRTUWY\\]^aaabbcel_[VOJC@@><8=ENl\xc2\x9d\xc2\xb2\xc3\x8f\xc2\xb8\xc2\xa089889:9;;;=>@ACEGIJLMOPRSRRQRSUWY[\\\\]]^^__deZVPFDA@><98;EZ\xc2\x95\xc2\xb3\xc2\xbf\xc3\x94\xc3\xa3\xc3\x8477777899:;>?@BDEGIKMNPQRSTRQRSUVXYYZZZZZ[]d^WPIA@?;;<67COe\xc2\x92\xc2\xb7\xc3\xa2\xc3\xb5\xc3\xb9\xc3\xb15566679::<=>@BCEGIKLOQRRTUTRSTSTVWXXXXWWWZcXRIB>>;:::;>GUj\xc2\x88\xc3\x88\xc3\xba\xc3\xba\xc3\xba\xc3\xba5456689:;<>?@BDEGIKMPRSTUVUTTSSTTVWWWVUSTX_SLC>=<:868;BJWm\xc2\x95\xc3\x9a\xc3\xba\xc3\xba\xc3\xba\xc3\xba4456789:;<=?@BDEHJKMPRTUWXXVUSSTTUVVVSPQRV\\LD@:;9:988:BLZo\xc2\x8e\xc3\x85\xc3\xb8\xc3\xba\xc3\xba\xc3\xba4456788:;=>?ABDFHJLNQSTVWXYWUTSSTTUTROMMOUSEA<;778867:AJVf\x7f\xc2\xa0\xc3\x90'
@@ -24,11 +26,109 @@ if not cam_available: # load dummy
     print (pickle.loads(p))
 
 
+
+
+
+class LinEd:
+    
+    def __init__(self,win,xpos,ypos,width,maxchar=255,startval=None,history=None):
+        self.win=win
+        self.xpos=xpos
+        self.ypos=ypos
+        self.maxchar=maxchar
+        self.width=width
+        self.val=startval if startval else b''
+        self.cursorpos=len(self.val)
+        self.disppos=0
+        self.history=history
+        self.hist_pos=-1
+        self.show()
+        self.done=False
+    
+    def show(self, cursor_shown=True):
+        dstr=self.val[self.disppos:]
+        if cursor_shown:
+            dstr=dstr[:self.cursorpos-self.disppos]+bytes([8])+dstr[self.cursorpos-self.disppos:]
+        dstr=dstr[:self.width]
+        if len(dstr)<self.width:dstr+=bytes(self.width-len(dstr))
+        self.win.set_prtpos(self.xpos,self.ypos)
+        self.win.prttxt(dstr)
+    
+    def clear(self,startval=None):
+        self.val=startval if startval else b''
+        self.cursorpos=len(self.val)
+        self.disppos=0
+        self.hist_pos=-1
+        if not self.done:
+            self.show()
+    
+    def kb_event(self,char):
+        if char&0x40:   
+            # special character or work
+            if char==118:
+                self.done=True
+                if self.history:self.history.append(self.val)
+            elif char==119: # del
+                if self.cursorpos>0:
+                    self.cursorpos-=1
+                    self.val=self.val[:self.cursorpos]+self.val[self.cursorpos+1:]
+                    self.disppos=min(self.disppos,self.cursorpos)
+            elif char==114: # left
+                if self.cursorpos>0:
+                    self.cursorpos-=1
+                    self.disppos=min(self.disppos,self.cursorpos)
+            elif char==115: # right
+                if self.cursorpos<len(self.val):
+                    self.cursorpos+=1
+                    self.disppos=max(self.disppos,self.cursorpos+1-self.width)
+            elif char==112: # up
+                if self.history:
+                    if self.hist_pos+1<len(self.history):
+                        self.hist_pos+=1
+                        self.disppos=0
+                        self.val=self.history[self.hist_pos]
+                        self.cursorpos=min(len(self.val),self.width-1)
+            elif char==113: # down
+                if self.history:
+                    if self.hist_pos>=1:
+                        self.hist_pos-=1
+                        self.val=self.history[self.hist_pos]
+                    else:
+                        self.hist_pos=-1
+                        self.val=b''
+                    self.disppos=0
+                    self.cursorpos=min(len(self.val),self.width-1)
+                pass
+        else: 
+            if len(self.val)<self.maxchar:
+                self.val=self.val[:self.cursorpos]+bytes([char])+self.val[self.cursorpos:]
+                self.cursorpos+=1
+                self.disppos=max(self.disppos,self.cursorpos+1-self.width)
+        self.show()
+    
+    def close(self):
+        self.done=True
+
+
+class AppState(Enum):
+    STOP = 0
+    SHOW = 1
+    MOVIE_REC = 2
+    MOVIE_QUERY_YN = 3
+    MOVIE_QUERY_NAME = 4
+    PIC_QUERY_YN = 5
+    PIC_QUERY_NAME = 6
+    
+    
+
 class AppPiCam:
     
     def __init__(self,mgr):
         self.mgr=mgr
         self.mainwin=TextWindow(mgr,32,24,0,0,kb_event=self.kb_event, cursor_off=True)
+        self.ctrlwin=None
+        self.ctrlwin_timeout=time.time()+20
+        self.edlin=None
         self.show_offset=0
         self.max_lines=16
         self.f_index_str='1234567890ABCDEFGHI'
@@ -38,18 +138,18 @@ class AppPiCam:
         self.build_charmap()
         self.cam=None
         self.camout=None
-        self.active=False
+        self.app_state=AppState.SHOW
         self.delay_s=3.0
-        self.show_help()
-        self.event=mgr.schedule_event(self.periodic,5.0,5.0)
+        self.event=mgr.schedule_event(self.periodic,1.0,5.0)
         self.contrast=0.5
         self.brightness=1.0
         self.invert=False
-        self.h_flip=False
-        self.v_flip=False
+        self.h_v_rot=0      # H/V flip or rotate status as three LSB bits
         self.floyd_stb=False
-        self.rotate=False
         self.applied_rot=None
+        self.check_show_ctrlwin()
+        self.movie=[]
+        self.last_pic=None
     
     
     def close(self):
@@ -59,14 +159,38 @@ class AppPiCam:
         if  self.cam is not None:
             self.cam.close()
             self.cam=None
+        self.mainwin.close()
+        if self.ctrlwin:
+            self.ctrlwin.close()
+    
+    def check_show_ctrlwin(self):
+        if not self.ctrlwin:
+            self.ctrlwin=TextWindow(self.mgr,14,13,14,9,border=WindowBorderFrame(str2zx('ZX LIVE CAM')) ,kb_event=self.kb_event, cursor_off=True)
+            self.ctrlwin.prttxt(str2zx('F fast S slow\n\nD dith I invrt',upper_inv=True ))
+            self.ctrlwin.prttxt(str2zx('\nP pic M movie\n',upper_inv=True ))
+            self.ctrlwin.prttxt(str2zx('\nR rotate\n\n1-5 brightness6-0 contrast\n\nX exit',upper_inv=True ))
+        elif time.time()>self.ctrlwin_timeout:
+            self.ctrlwin.close()
+            self.ctrlwin=None
+                                    
+
+    def show_help(self):
+        self.mainwin.prttxt(str2zx('\n      ZX LIVE CAMERA       \n\n',inverse=True ))
+        self.mainwin.prttxt(str2zx('\n\n NEWLINE to start\n\n F fast update    S slow update\n\n D dithering\n\n I invert',upper_inv=True ))
+        self.mainwin.prttxt(str2zx('\n\n R rotate\n\n 1-5 bright\n\n 6-0 contrast\n\n X exit',upper_inv=True ))
     
     def periodic(self):
-        if self.active:
-            if self.mgr.is_connected():pass
+        if self.app_state==AppState.SHOW:
+            if self.ctrlwin and time.time()>self.ctrlwin_timeout:
+                self.ctrlwin.close()
+                self.ctrlwin=None
+        if self.app_state in (AppState.SHOW,AppState.MOVIE_REC):
             i=self.get_img_mono()
             self.mgr.update(0.05) # allow for kb inp response
-            if self.active:
-                self.show_lrg_from_array(i)
+            if self.app_state in (AppState.SHOW,AppState.MOVIE_REC):
+                self.last_pic=self.show_lrg_from_array(i)
+                if self.app_state == AppState.MOVIE_REC:
+                    if len(self.movie<50): self.movie.append(self.last_pic)
                 self.event.reschedule(self.delay_s,5.0)
     
     def build_charmap(self):
@@ -118,9 +242,10 @@ class AppPiCam:
                 self.cam.resolution=(64,48)
             else:
                 self.camout.truncate(0)
-            if self.rotate != self.applied_rot:
+            rotate=self.h_v_rot & 1
+            if rotate != self.applied_rot:
                 self.cam.resolution=(48,64) if self.rotate else (64,48)
-                self.applied_rot=self.rotate
+                self.applied_rot=rotate
             self.cam.capture(self.camout,'yuv',use_video_port=True)
             a=self.camout.array[:,:,0]
             if self.rotate: a=numpy.transpose(a)
@@ -132,8 +257,8 @@ class AppPiCam:
         #calculate the mean value etc
         t=time.time()
         
-        if self.h_flip:a=numpy.fliplr(a)
-        if self.v_flip:a=numpy.flipud(a)
+        if self.h_v_rot & 4 :a=numpy.fliplr(a)  # H flip
+        if self.h_v_rot & 2 :a=numpy.flipud(a)   # V flip
         if self.invert:a=255-a
         
         m=a.mean()/self.brightness
@@ -189,9 +314,6 @@ class AppPiCam:
         #print("Display took %.2fus."%((time.time()-t)*1000000) )
         # now er have an 8bit code that we map for the proper char
 
-    def show_help(self):
-        self.mainwin.prttxt(str2zx('\n\n <<< ZX LIVE CAMERA >>> \n\n',upper_inv=False ))
-        self.mainwin.prttxt(str2zx('\n\n NEWLINE to start\n\n F fast update    S slow update\n\n D dithering\n\n I invert\n\n H/V flip  R rotate\n\n 1-5 brightness\n\n 6-0 contrast\n\n X exit',upper_inv=True ))
                                       
     
     def kb_event(self,win,zxchar):
@@ -199,10 +321,9 @@ class AppPiCam:
         bright={'1':1.5,'2':1.2, '3':1.0, '4':0.83, '5':0.67}
         contr ={'6':0.2,'7':0.33, '8':0.5, '9':0.8, '0':1.2}
         s=zx2str( [zxchar] )
-        self.active=True
         if s in 'xX' or zxchar==12:
             self.close()
-            self.active=False
+            self.app_state=AppState.STOP
             self.mainwin.close()
             self.event.remove()
             app.clear()
@@ -215,22 +336,68 @@ class AppPiCam:
             self.floyd_stb=not self.floyd_stb
         elif s in 'iI':
             self.invert=not self.invert
-        elif s in 'hH':
-            self.h_flip=not self.h_flip
-        elif s in 'vV':
-            self.v_flip=not self.v_flip
         elif s in 'rR':
-            self.rotate=not self.rotate
+            self.h_v_rot += 1
+            
+        elif s in 'pP':
+            if self.app_state==AppState.SHOW:
+                self.app_state=AppState.PIC_QUERY_YN
+                if self.ctrlwin: self.ctrlwin.close()
+                self.ctrlwin=TextWindow(self.mgr,10,1,18,19,border=WindowBorderFrame() ,kb_event=self.kb_event_query, cursor_off=True)
+                self.ctrlwin.prttxt(str2zx('save? Y/N',upper_inv=True ))
+
+        elif s in 'mM':
+            if self.app_state==AppState.SHOW:
+                self.app_state=AppState.MOVIE_REC
+                if self.ctrlwin: self.ctrlwin.close()
+                self.ctrlwin=TextWindow(self.mgr,12,1,18,19,border=WindowBorderFrame() ,kb_event=self.kb_event_query, cursor_off=True)
+                self.ctrlwin.prttxt(str2zx('recording',upper_inv=True ))
+
         elif s in bright:
             self.brightness=bright[s]
         elif s in contr:
             self.contrast=contr[s]
-        else:
-            self.active=True
         # TODO invers, save_pic, help, exit
+        self.ctrlwin_timeout=time.time()+3
+        self.check_show_ctrlwin()
         self.event.reschedule(0.2,5.0)
 
-
+    def kb_event_query(self,win,zxchar):
+        #win.prtchar(zxchar)
+        s=zx2str( [zxchar] )
+        if self.app_state in (AppState.PIC_QUERY_NAME,AppState.MOVIE_QUERY_NAME):
+            if zxchar in (117,118): # enter,break 
+                if zxchar==118: # enter
+                    self.edlin.kb_event(zxchar)
+                    if self.app_state==AppState.PIC_QUERY_NAME:
+                        if self.edlin.val.strip():
+                            pass
+                    elif self.app_state==AppState.MOVIE_QUERY_NAME:
+                        if self.edlin.val.strip():
+                            pass
+                self.edlin.close()
+                self.edlin=None
+                self.app_state=AppState.SHOW
+                self.ctrlwin_timeout=0
+                if self.ctrlwin:
+                    self.ctrlwin.close()
+                    self.ctrlwin=None
+            else:
+                self.edlin.kb_event(zxchar)
+        else:
+            if s in 'yYzZ':
+                if self.app_state in (AppState.PIC_QUERY_YN,AppState.MOVIE_QUERY_YN):
+                    self.app_state= AppState.PIC_QUERY_NAME if self.app_state==AppState.PIC_QUERY_YN else AppState.MOVIE_QUERY_NAME
+                    if self.ctrlwin: self.ctrlwin.close()
+                    self.ctrlwin=TextWindow(self.mgr,12,2,18,19,border=WindowBorderFrame() ,kb_event=self.kb_event_query, cursor_off=True)
+                    self.ctrlwin.prttxt(str2zx('file name:',upper_inv=True ))
+                    self.edlin=LinEd(self.ctrlwin,0,1,11,maxchar=255,history=None)
+            else:
+                self.app_state=AppState.SHOW
+                if self.ctrlwin:
+                    self.ctrlwin.close()
+                    self.ctrlwin=None
+            self.event.reschedule(0.2,5.0)
 
 app=[]
 

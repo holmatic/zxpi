@@ -39,7 +39,7 @@ class Shutdown:
         s=zx2str( [zxchar] )
         if s in 'sS' or zxchar==12:
             if "Linux" in platform.system():
-                subprocess.run(["sudo","shutdown", "-h", "0"])
+                subprocess.run(["sudo","shutdown", "-h", "0"]) # sude is reqired if the process was started via /etc/rc.local
                 self.mainwin.cls()
                 self.mainwin.prttxt(str2zx('\nshutdown initiated\n\n    good bye.',upper_inv=True ))
             else:

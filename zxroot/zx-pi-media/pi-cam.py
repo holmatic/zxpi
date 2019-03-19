@@ -2,6 +2,7 @@
 from zx_app_host import TextWindow, WindowBorderFrame, str2zx, zx2str, ZXCHAR_BLANK, ZXCHAR_INV_FLG
 from concurrent.futures._base import RUNNING
 
+import zxpi_paths
 
 try:
     import picamera
@@ -139,6 +140,7 @@ class AppPiCam:
         self.cam=None
         self.camout=None
         self.app_state=AppState.SHOW
+        self.replay_ix=0
         self.delay_s=3.0
         self.event=mgr.schedule_event(self.periodic,1.0,5.0)
         self.contrast=0.5
@@ -185,13 +187,27 @@ class AppPiCam:
                 self.ctrlwin.close()
                 self.ctrlwin=None
         if self.app_state in (AppState.SHOW,AppState.MOVIE_REC):
-            i=self.get_img_mono()
+            self.last_pic=self.get_img_mono()
             self.mgr.update(0.05) # allow for kb inp response
             if self.app_state in (AppState.SHOW,AppState.MOVIE_REC):
-                self.last_pic=self.show_lrg_from_array(i)
+                lrg=self.calc_lrg_from_array(self.last_pic)
+                self.show_lrg(lrg)
                 if self.app_state == AppState.MOVIE_REC:
-                    if len(self.movie<50): self.movie.append(self.last_pic)
+                    if len(self.movie)<50:
+                        self.movie.append(self.last_pic)
+                        self.ctrlwin.set_prtpos(0, 0)
+                        self.ctrlwin.prttxt(str2zx('recording %02d'%len(self.movie) ,upper_inv=True ))
+                    else:
+                        self.end_movie_rec()
                 self.event.reschedule(self.delay_s,5.0)
+        elif self.app_state in (AppState.MOVIE_QUERY_YN,AppState.MOVIE_QUERY_NAME):
+            if len(self.movie):
+                if self.replay_ix >= len(self.movie): self.replay_ix=0
+                lrg=self.calc_lrg_from_array(self.movie[self.replay_ix])
+                self.show_lrg(lrg)
+                self.replay_ix+=1
+                self.event.reschedule(self.delay_s,5.0)
+            
     
     def build_charmap(self):
         for pul in range(4):
@@ -252,8 +268,15 @@ class AppPiCam:
         else:
             a=pickle.loads(p)
         return a
-        
-    def show_lrg_from_array(self,a):
+
+
+    def show_lrg(self,a):
+        nr,nc=a.shape
+        for row in range(nr):
+            for col in range(nc):
+                self.mainwin.setchar_raw(a[row,col], col, row)
+
+    def calc_lrg_from_array(self,a):
         #calculate the mean value etc
         t=time.time()
         
@@ -266,12 +289,12 @@ class AppPiCam:
         l0=m-s
         l1=m
         l2=m+s
-        
+        nr,nc=a.shape        
+
         # optional flody-steinberg
         if self.floyd_stb:
             l0=max(0,int(m-2*s))
             l2=min(255,int(m+2*s))
-            nr,nc=a.shape[0],a.shape[1]
             for row in range(0,nr):
                 for col in range(0,nc):
                     p=a[row,col]
@@ -290,9 +313,10 @@ class AppPiCam:
         brightmap=[ 0 if b<=l0  else 3 if b>=l2 else 1 if b<l1 else 2    for b in range(256)]
         #print(brightmap)
         #print(a.mean(),a.std())
+        va=numpy.zeros((nr//2,nc//2),dtype=int)
         
-        for row in range(0,a.shape[0],2):
-            for col in range(0,a.shape[1],2):
+        for row in range(0,nr,2):
+            for col in range(0,nc,2):
                 # get the four points that make up a character
                 code=0
                 for b in (a[row,col],a[row,col+1],a[row+1,col],a[row+1,col+1]):
@@ -310,10 +334,17 @@ class AppPiCam:
                         if c!=brightmap[b]: print("FAIL")
                     else:
                         code+=brightmap[b]
-                self.mainwin.setchar_raw(self.charmap[code], col//2, row//2)
+                va[row//2,col//2] = self.charmap[code]
+                #self.mainwin.setchar_raw(self.charmap[code], col//2, row//2)
         #print("Display took %.2fus."%((time.time()-t)*1000000) )
         # now er have an 8bit code that we map for the proper char
+        return va
 
+    def end_movie_rec(self):
+        self.app_state=AppState.MOVIE_QUERY_YN
+        if self.ctrlwin: self.ctrlwin.close()
+        self.ctrlwin=TextWindow(self.mgr,10,1,18,19,border=WindowBorderFrame() ,kb_event=self.kb_event_query, cursor_off=True)
+        self.ctrlwin.prttxt(str2zx('save? Y/N',upper_inv=True ))
                                       
     
     def kb_event(self,win,zxchar):
@@ -347,10 +378,12 @@ class AppPiCam:
                 self.ctrlwin.prttxt(str2zx('save? Y/N',upper_inv=True ))
 
         elif s in 'mM':
+            self.movie.clear()
+            self.replay_ix=0
             if self.app_state==AppState.SHOW:
                 self.app_state=AppState.MOVIE_REC
                 if self.ctrlwin: self.ctrlwin.close()
-                self.ctrlwin=TextWindow(self.mgr,12,1,18,19,border=WindowBorderFrame() ,kb_event=self.kb_event_query, cursor_off=True)
+                self.ctrlwin=TextWindow(self.mgr,13,1,17,19,border=WindowBorderFrame() ,kb_event=self.kb_event_query, cursor_off=True)
                 self.ctrlwin.prttxt(str2zx('recording',upper_inv=True ))
 
         elif s in bright:
@@ -370,8 +403,19 @@ class AppPiCam:
                 if zxchar==118: # enter
                     self.edlin.kb_event(zxchar)
                     if self.app_state==AppState.PIC_QUERY_NAME:
-                        if self.edlin.val.strip():
-                            pass
+                        if self.edlin.val:
+                            name=zx2str(self.edlin.val, to_lower=True).strip()
+                            #path 
+                            p=zxpi_paths.get_current_work_path()/'pics'
+                            if not p.exists(): p.mkdir(parents=True)
+                            n=p/(name+'.zxscr')
+                            with n.open('wb') as f:
+                                lrg=self.calc_lrg_from_array(self.last_pic)
+                                nr,nc=lrg.shape
+                                for row in range(nr):
+                                    #for col in range(nc):
+                                    f.write(bytes( [v for v in lrg[row]]  ))
+                                print("Saved to",str(n))
                     elif self.app_state==AppState.MOVIE_QUERY_NAME:
                         if self.edlin.val.strip():
                             pass
@@ -384,6 +428,8 @@ class AppPiCam:
                     self.ctrlwin=None
             else:
                 self.edlin.kb_event(zxchar)
+        elif self.app_state in (AppState.MOVIE_REC,):
+            self.end_movie_rec()
         else:
             if s in 'yYzZ':
                 if self.app_state in (AppState.PIC_QUERY_YN,AppState.MOVIE_QUERY_YN):

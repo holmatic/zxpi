@@ -260,11 +260,11 @@ class AppPiCam:
                 self.camout.truncate(0)
             rotate=self.h_v_rot & 1
             if rotate != self.applied_rot:
-                self.cam.resolution=(48,64) if self.rotate else (64,48)
+                self.cam.resolution=(48,64) if rotate else (64,48)
                 self.applied_rot=rotate
             self.cam.capture(self.camout,'yuv',use_video_port=True)
             a=self.camout.array[:,:,0]
-            if self.rotate: a=numpy.transpose(a)
+            if rotate: a=numpy.transpose(a)
         else:
             a=pickle.loads(p)
         return a

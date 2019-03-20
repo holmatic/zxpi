@@ -1,6 +1,5 @@
 
 from zx_app_host import TextWindow, WindowBorderFrame, str2zx, zx2str, ZXCHAR_BLANK, ZXCHAR_INV_FLG
-from concurrent.futures._base import RUNNING
 
 import zxpi_paths
 
@@ -153,17 +152,29 @@ class AppPiCam:
         self.movie=[]
         self.last_pic=None
     
+    def __enter__(self):
+        return self
+         
+    def __exit__(self, _type, _value, _traceback):    
+        self.close()
     
     def close(self):
+        self.app_state=AppState.STOP
+        if  self.event:
+            self.event.remove()
+            self.event=None
         if  self.camout is not None:
             self.camout.close()
             self.camout=None
         if  self.cam is not None:
             self.cam.close()
             self.cam=None
-        self.mainwin.close()
+        if self.mainwin:
+            self.mainwin.close()
+            self.mainwin=None
         if self.ctrlwin:
             self.ctrlwin.close()
+            self.ctrlwin=None
     
     def check_show_ctrlwin(self):
         if not self.ctrlwin:
@@ -354,10 +365,6 @@ class AppPiCam:
         s=zx2str( [zxchar] )
         if s in 'xX' or zxchar==12:
             self.close()
-            self.app_state=AppState.STOP
-            self.mainwin.close()
-            self.event.remove()
-            app.clear()
             return
         elif s in 'fF':
             self.delay_s=0.15
@@ -404,8 +411,10 @@ class AppPiCam:
                     self.edlin.kb_event(zxchar)
                     if self.app_state==AppState.PIC_QUERY_NAME:
                         if self.edlin.val:
+                            # safe pic
                             name=zx2str(self.edlin.val, to_lower=True).strip()
                             #path 
+                            mwin=self.mgr.show_msg_win(str2zx("save pic .."))
                             p=zxpi_paths.get_current_work_path()/'pics'
                             if not p.exists(): p.mkdir(parents=True)
                             n=p/(name+'.zxscr')
@@ -416,9 +425,25 @@ class AppPiCam:
                                     #for col in range(nc):
                                     f.write(bytes( [v for v in lrg[row]]  ))
                                 print("Saved to",str(n))
+                            mwin.close()
                     elif self.app_state==AppState.MOVIE_QUERY_NAME:
-                        if self.edlin.val.strip():
-                            pass
+                        if self.edlin.val:
+                            # save movie
+                            name=zx2str(self.edlin.val, to_lower=True).strip()
+                            #path 
+                            p=zxpi_paths.get_current_work_path()/'movies'
+                            if not p.exists(): p.mkdir(parents=True)
+                            n=p/(name+'.zxmovie')
+                            mwin=self.mgr.show_msg_win(str2zx("save movie .."))
+                            with n.open('wb') as f:
+                                for p in self.movie:
+                                    lrg=self.calc_lrg_from_array(p)
+                                    nr,nc=lrg.shape
+                                    for row in range(nr):
+                                        #for col in range(nc):
+                                        f.write(bytes( [v for v in lrg[row]]  ))
+                                print("Saved as",str(n))
+                            mwin.close()
                 self.edlin.close()
                 self.edlin=None
                 self.app_state=AppState.SHOW
@@ -445,10 +470,10 @@ class AppPiCam:
                     self.ctrlwin=None
             self.event.reschedule(0.2,5.0)
 
-app=[]
 
 print("Import AppPiCam")
 def start(mgr):
     print("AppPiCam Start")
-    app.append(AppPiCam(mgr))
+    with AppPiCam(mgr) as a:
+        while a.mainwin: mgr.update(0.5)
 

@@ -1,6 +1,6 @@
 
 from zx_app_host import TextWindow, WindowBorderFrame, str2zx, zx2str, ZXCHAR_BLANK, ZXCHAR_INV_FLG
-
+import apps.media_viewer
 from pathlib import Path
 from shutil import copyfile
 import importlib
@@ -127,6 +127,13 @@ class AppFileBrowser:
   #                  eval("print(globals())", globals())
    #                 r=eval(modcmd, globals())
     #                print("LOADed PYTHON ")
+                elif fi.suffix.lower() in ('.zxscr','.zxmovie'):
+                    try:
+                        apps.media_viewer.start(self.mgr,fi)
+                    except Exception as e:
+                        print(e)
+                        traceback.print_exc()
+                        self.mgr.show_dialog(str2zx("error showing file"))
                     
         if redraw:
     

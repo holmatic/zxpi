@@ -212,7 +212,7 @@ class AppPiCam:
                     else:
                         self.end_movie_rec()
                 evt_t=time.time()-startt
-                self.event.reschedule(  max(0.05,self.delay_s-evt_t) ,5.0)
+                self.event.reschedule(  max(0.08,self.delay_s-evt_t) ,5.0)
         elif self.app_state in (AppState.MOVIE_QUERY_YN,AppState.MOVIE_QUERY_NAME):
             if len(self.movie):
                 if self.replay_ix >= len(self.movie): self.replay_ix=0
@@ -220,7 +220,7 @@ class AppPiCam:
                 self.show_lrg(lrg)
                 self.replay_ix+=1
                 evt_t=time.time()-startt
-                self.event.reschedule(  max(0.05,self.delay_s-evt_t) ,5.0)
+                self.event.reschedule(  max(0.08,self.delay_s-evt_t) ,5.0)
             
     
     def build_charmap(self):

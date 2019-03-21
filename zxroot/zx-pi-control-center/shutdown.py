@@ -23,6 +23,7 @@ import os
 class Shutdown:
     
     def __init__(self,mgr):
+        self.mrg=mgr
         self.mainwin=TextWindow(mgr,18,12,6,5,border=WindowBorderFrameShadow(),kb_event=self.kb_event, cursor_off=True)
         self.print_help()
 

@@ -193,6 +193,7 @@ class AppPiCam:
         self.mainwin.prttxt(str2zx('\n\n R rotate\n\n 1-5 bright\n\n 6-0 contrast\n\n X exit',upper_inv=True ))
     
     def periodic(self):
+        startt=time.time()
         if self.app_state==AppState.SHOW:
             if self.ctrlwin and time.time()>self.ctrlwin_timeout:
                 self.ctrlwin.close()
@@ -210,14 +211,16 @@ class AppPiCam:
                         self.ctrlwin.prttxt(str2zx('recording %02d'%len(self.movie) ,upper_inv=True ))
                     else:
                         self.end_movie_rec()
-                self.event.reschedule(self.delay_s,5.0)
+                evt_t=time.time()-startt
+                self.event.reschedule(  max(0.05,self.delay_s-evt_t) ,5.0)
         elif self.app_state in (AppState.MOVIE_QUERY_YN,AppState.MOVIE_QUERY_NAME):
             if len(self.movie):
                 if self.replay_ix >= len(self.movie): self.replay_ix=0
                 lrg=self.calc_lrg_from_array(self.movie[self.replay_ix])
                 self.show_lrg(lrg)
                 self.replay_ix+=1
-                self.event.reschedule(self.delay_s,5.0)
+                evt_t=time.time()-startt
+                self.event.reschedule(  max(0.05,self.delay_s-evt_t) ,5.0)
             
     
     def build_charmap(self):
@@ -444,8 +447,9 @@ class AppPiCam:
                                         f.write(bytes( [v for v in lrg[row]]  ))
                                 print("Saved as",str(n))
                             mwin.close()
-                self.edlin.close()
-                self.edlin=None
+                if self.edlin:
+                    self.edlin.close()
+                    self.edlin=None
                 self.app_state=AppState.SHOW
                 self.ctrlwin_timeout=0
                 if self.ctrlwin:

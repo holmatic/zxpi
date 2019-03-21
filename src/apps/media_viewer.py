@@ -14,7 +14,7 @@ class MediaViewerCam:
         self.mgr=mgr
         self.mainwin=TextWindow(mgr,32,24,0,0,kb_event=self.kb_event, cursor_off=True)
         self.filepath=filepath
-        self.delay_s=0.3
+        self.delay_s=0.25
         self.event=None
         self.pic_or_movie=bytes()
         self.pic_or_movie=filepath.open('rb').read()

@@ -27,6 +27,85 @@ if not cam_available: # load dummy
 
 
 
+# p file conversion
+def compress_scr(inpbytes):
+    num_frames=len(inpbytes)//768
+    print(num_frames)
+    o=bytearray()
+    i=0
+    for f in range(num_frames):
+        for line in range(24):
+            repchar,repcnt=None,0
+            for col in range(32):
+                ch=inpbytes[i]
+                i+=1
+                if (ch & 0x7F)>10:    # no graphics
+                    print("ASCII")
+                    o.append(0x2b)  # ascii
+                    o.append(ch)
+                else:
+                    if ch==repchar and repcnt<8:
+                        repcnt+=1
+                    else:
+                        if repchar is not None:
+                            o.append( repchar+16*(repcnt-1) )
+                            repchar,repcnt=None,0
+                        repchar,repcnt=ch,1
+            if repchar is not None:
+                o.append( repchar+16*(repcnt-1) )
+                repchar,repcnt=None,0
+            o.append(0x1b)  # skipnext for new line
+        o.append(0x3b)     #  endframe
+    return o
+
+class PFileEditor():
+    
+    def __init__(self, pfile):
+        self.pfile=bytearray(pfile)
+        self.offs=0x4009
+        self.ptrs=[16396,16398,16400,16402,16404,16406,16408,16410,16412,  0x4083, 0x4029 ]
+        
+    def peek_w(self,addr):
+        i=addr-self.offs
+        return self.pfile[i]+256*self.pfile[i+1]
+    
+    def poke_w(self,addr,val):
+        i=addr-self.offs
+        self.pfile[i]=val%256
+        self.pfile[i+1]=val//256
+        
+    def insert(self,pos,ins_bytes):
+        print(ins_bytes[:50].hex())
+        for p in self.ptrs:
+            a=self.peek_w(p)
+            if a>pos:
+                self.poke_w(p, a+len(ins_bytes) )
+                print(p,a,self.peek_w(p))
+        self.pfile = self.pfile[:pos-self.offs] + bytearray(ins_bytes)  + self.pfile[pos-self.offs:]
+        
+
+def create_comp_viewer(comp_bytes):
+    empty_p=(zxpi_paths.get_zxpi_root()/'..'/'src'/'z80_asm'/'mvviewer.p').open('rb').read()
+    print("P-File before",len(empty_p))
+    p=PFileEditor(empty_p)
+    p.insert(0x4085,  comp_bytes)
+    print("P-File after",len(p.pfile))
+    return p.pfile
+                            
+#with (zxpi_paths.get_current_work_path()/'movies'/'testmv.zxmovie').open('rb') as f:
+#    print ("compress", len(compress_scr(  f.read() ))  )
+
+d=create_comp_viewer( compress_scr( (zxpi_paths.get_current_work_path()/'movies'/'testmv.zxmovie').open('rb').read() ) ) 
+with (zxpi_paths.get_current_work_path()/'movies'/'testmv.p').open('wb') as f:
+    f.write(d) 
+
+
+
+
+
+
+
+
 
 
 class LinEd:
@@ -200,7 +279,7 @@ class AppPiCam:
                 self.ctrlwin=None
         if self.app_state in (AppState.SHOW,AppState.MOVIE_REC):
             self.last_pic=self.get_img_mono()
-            self.mgr.update(0.05) # allow for kb inp response
+            self.mgr.update(0.08) # allow for kb inp response
             if self.app_state in (AppState.SHOW,AppState.MOVIE_REC):
                 lrg=self.calc_lrg_from_array(self.last_pic)
                 self.show_lrg(lrg)

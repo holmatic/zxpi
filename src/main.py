@@ -23,7 +23,7 @@ if __name__ == '__main__':
         try: # development only
             os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\loader.asm z80_asm\loader.p''')
             os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\serserv.asm z80_asm\serserv.p''')
-            os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\zxpiload.asm z80_asm\zxpiload.p''')
+            os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\mvviewer.asm z80_asm\mvviewer.p''')
             os.system('''"C:\Program Files (x86)\Tasm32\Tasm.exe" -80 -b z80_asm\zxpiload.asm z80_asm\zxpiload.p''')
             os.replace('z80_asm\zxpiload.p','..\zxroot\zx81-tools\zxpiload.p')
         except:pass

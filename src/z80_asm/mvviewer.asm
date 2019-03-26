@@ -216,7 +216,7 @@ VSTART:
 RESTART:
 	LD DE,VDATA   ; read data
 NEWFRAME:
-	LD A,63	; dec, expire at 0
+	LD A,62	; dec, expire at 0
 	LD (16436),A ; FRAMES
 	LD HL,(vdfile) ; video bffer
 	INC HL
@@ -264,6 +264,10 @@ NOAPLHA:
 	CP 03BH
 	JR NZ,NOENDFRAME ; newline etc
 	; end frame
+	;LD HL,(vdfile) ; video bffer
+	;INC HL
+	;LD A,45
+	;LD (HL),A
 WAITTIMER:
 	LD A,(16436) ; FRAMES
 	CP 50
@@ -279,7 +283,7 @@ NOENDFRAME:
 	JR RESTART
 
 NORESTART:
-	JR NEWFRAME
+	JR CHARLOOP
 
 
  

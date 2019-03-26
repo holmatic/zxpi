@@ -56,6 +56,7 @@ def compress_scr(inpbytes):
                 repchar,repcnt=None,0
             o.append(0x1b)  # skipnext for new line
         o.append(0x3b)     #  endframe
+    print("Count 0x3b",o.count(0x3b) )
     return o
 
 class PFileEditor():
@@ -95,10 +96,10 @@ def create_comp_viewer(comp_bytes):
 #with (zxpi_paths.get_current_work_path()/'movies'/'testmv.zxmovie').open('rb') as f:
 #    print ("compress", len(compress_scr(  f.read() ))  )
 
-d=create_comp_viewer( compress_scr( (zxpi_paths.get_current_work_path()/'movies'/'testmv.zxmovie').open('rb').read() ) ) 
-with (zxpi_paths.get_current_work_path()/'movies'/'testmv.p').open('wb') as f:
-    f.write(d) 
-
+if 0: # test only
+    d=create_comp_viewer( compress_scr( (zxpi_paths.get_current_work_path()/'movies'/'testmv.zxmovie').open('rb').read() ) ) 
+    with (zxpi_paths.get_current_work_path()/'movies'/'testmv.p').open('wb') as f:
+        f.write(d) 
 
 
 
@@ -513,18 +514,25 @@ class AppPiCam:
                             # save movie
                             name=zx2str(self.edlin.val, to_lower=True).strip()
                             #path 
-                            p=zxpi_paths.get_current_work_path()/'movies'
-                            if not p.exists(): p.mkdir(parents=True)
-                            n=p/(name+'.zxmovie')
+                            pth=zxpi_paths.get_current_work_path()/'movies'
+                            if not pth.exists(): pth.mkdir(parents=True)
+                            n=pth/(name+'.zxmovie')
                             mwin=self.mgr.show_msg_win(str2zx("save movie .."))
+                            mv_dat=bytearray()
                             with n.open('wb') as f:
                                 for p in self.movie:
                                     lrg=self.calc_lrg_from_array(p)
                                     nr,nc=lrg.shape
                                     for row in range(nr):
                                         #for col in range(nc):
-                                        f.write(bytes( [v for v in lrg[row]]  ))
+                                        rowdat=bytearray([v for v in lrg[row]])
+                                        mv_dat+=rowdat
+                                        f.write(rowdat)
                                 print("Saved as",str(n))
+                            self.mgr.update(0.1)
+                            n=pth/(name+'.p')
+                            with n.open('wb') as f:
+                                f.write( create_comp_viewer( compress_scr(mv_dat) ) )
                             mwin.close()
                 if self.edlin:
                     self.edlin.close()

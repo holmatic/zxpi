@@ -46,6 +46,11 @@ class ListenerThread:
             s.connect(self.addr)
             self.connected=True
             self.conn=s
+
+            if self.passw: self.send('PASS %s\r\n'%self.passw)
+            self.send('NICK %s\r\n'%nick)
+            self.send('USER %s * * : %s\r\n'%(nick,nick)  )
+
             try:
                 while True:
                     print("read data: ")
@@ -199,7 +204,7 @@ class IrcClient:
         self.inp_win=TextWindow(mgr,30,2,1,21,border=WindowBorderFrame(),kb_event=self.kb_event, cursor_off=True)
         self.ed=None
         self.nick='zx-user' 
-        self.server="irc.freenode.net"
+        self.server="irc.zxq.de"
         self.pword=''
         self.port=6667
         self.inp_mode=InpMode.MENU

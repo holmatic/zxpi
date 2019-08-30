@@ -46,7 +46,7 @@ class ListenerThread:
             s.connect(self.addr)
             self.connected=True
             self.conn=s
-
+            # send the nick upfront, needed for some servers
             if self.passw: self.send('PASS %s\r\n'%self.passw)
             self.send('NICK %s\r\n'%nick)
             self.send('USER %s * * : %s\r\n'%(nick,nick)  )
